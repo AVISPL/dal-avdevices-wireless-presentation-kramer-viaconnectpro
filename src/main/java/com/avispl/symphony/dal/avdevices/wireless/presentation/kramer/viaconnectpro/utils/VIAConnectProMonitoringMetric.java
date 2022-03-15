@@ -48,7 +48,7 @@ public enum VIAConnectProMonitoringMetric {
 	 * Room name settings
 	 */
 	ROOM_NAME_SETTINGS_GET("RoomNameSettings","RName","Get,Status" ),
-
+	ROOM_NAME_SETTINGS_NAME("RoomNameSettings", "RName", "Get,Name"),
 	/**
 	 * Datetime display status
 	 */
@@ -101,7 +101,8 @@ public enum VIAConnectProMonitoringMetric {
 	/**
 	 * Part preset confirm
 	 */
-	PART_PRESET_CONFIRM_GET("PartPresentConfirmStatus","PartPresentConfirm", "Get");
+	PART_PRESET_CONFIRM_GET("PartPresentConfirmStatus","PartPresentConfirm", "Get"),
+	WIFI_GUEST_MODE("WifiGuestMode", "WifiGuestMode","Status");
 
 	/**
 	 * VIAConnectProControllingMetric with arguments constructor
