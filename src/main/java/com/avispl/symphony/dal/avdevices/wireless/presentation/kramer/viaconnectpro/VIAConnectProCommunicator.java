@@ -14,17 +14,10 @@ import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.dto.ParticipantListDTO;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProConstant;
-import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProControllingMetric;
-import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProMonitoringMetric;
+import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProMetric;
 import com.avispl.symphony.dal.communicator.TelnetCommunicator;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.springframework.util.CollectionUtils;
 
@@ -128,16 +121,89 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param controls List of AdvancedControllableProperty
 	 */
 	private void populateStatistics(Map<String, String> statistics, List<AdvancedControllableProperty> controls) throws Exception {
-		populateParticipantGroup(statistics);
-		populateDisplayStatus(statistics, controls);
-		populateOtherProperties(statistics, controls);
-		populateRoomCode(statistics, controls);
-		populateRoomName(statistics, controls);
-		populateDND(statistics, controls);
-		populateUserComputerControl(statistics,controls);
-		populateKickOff(statistics, controls);
-		populateStreamingControl(statistics, controls);
-
+		Set<String> groupNames = VIAConnectProMetric.getGroupNames();
+		for (String groupName : groupNames) {
+			switch (groupName) {
+				case "ParticipantList":
+					populateParticipantGroup(statistics);
+					break;
+				case "DisplayStatus":
+					populateDisplayStatus(statistics, controls);
+					break;
+				case "Volume":
+					populateVolume(statistics, controls);
+					break;
+				case "IpInformation":
+					populateIpInformation(statistics);
+					break;
+				case "RoomCodeSettings":
+					populateRoomCode(statistics, controls);
+					break;
+				case "RoomNameSettings":
+					populateRoomName(statistics, controls);
+					break;
+				case "DatetimeDisplayStatus":
+					populateDatetime(statistics, controls);
+					break;
+				case "PresentationModeStatus":
+					populatePresentationMode(statistics, controls);
+					break;
+				case "LogModeStatus":
+					populateLogMode(statistics, controls);
+					break;
+				case "QuickClientAccessStatus":
+					populateQuickClientAccess(statistics, controls);
+					break;
+				case "UserComputer":
+					populateUserComputerControl(statistics, controls);
+					break;
+				case "DND":
+					populateDND(statistics, controls);
+					break;
+				case "KickOff":
+					populateKickOff(statistics, controls);
+					break;
+				case "ScreenShareStatus":
+					populateScreenShare(statistics, controls);
+					break;
+				case "GatewaySerialNumber":
+					populateGatewaySerialNumber(statistics);
+					break;
+				case "GatewayMacAddress":
+					populateMacAddress(statistics);
+					break;
+				case "GatewayVersion":
+					populateGatewayVersion(statistics);
+					break;
+				case "Chrome":
+					populateChromeStatus(statistics, controls);
+					break;
+				case "RoomOverlay":
+					populateRoomOverlay(statistics, controls);
+					break;
+				case "AudioDevices":
+					populateAudioDevices(statistics);
+					break;
+				case "Streaming":
+				case "StreamingURL":
+					populateStreamingStatus(statistics, controls);
+					break;
+				case "StreamingControl":
+					populateStreamingControl(statistics, controls);
+					break;
+				case "WhiteBoard":
+					populateWhiteBoard(statistics, controls);
+					break;
+				case "PartPresentConfirmStatus":
+					populatePartPresentConfirm(statistics, controls);
+					break;
+				case "WifiGuestMode":
+					populateWifiGuestMode(statistics, controls);
+					break;
+				default:
+					//
+			}
+		}
 	}
 
 	/**
@@ -149,23 +215,23 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 */
 	private ParticipantListDTO getListParticipant() throws Exception {
 		ParticipantListDTO participantListDTO = new ParticipantListDTO();
-		List<String> param1 = Arrays.asList(VIAConnectProMonitoringMetric.PLIST_CNT.getParam().split(","));
-		String rawNumberOfUsers = sendTelnetCommand(VIAConnectProMonitoringMetric.PLIST_CNT.getCommand(), param1, false);
+		List<String> param1 = Arrays.asList(VIAConnectProMetric.PLIST_CNT.getParam().split(","));
+		String rawNumberOfUsers = sendTelnetCommand(VIAConnectProMetric.PLIST_CNT.getCommand(), param1, false);
 		int numberOfUsers = Integer.parseInt(rawResponseHandling(rawNumberOfUsers));
 		participantListDTO.setLoggedInUsers(numberOfUsers);
 		if (numberOfUsers == 0) {
 			participantListDTO.setUserAndStatusMap(new HashMap<>());
 			return participantListDTO;
 		}
-		List<String> param2 = Arrays.asList(VIAConnectProMonitoringMetric.PLIST_All_STATUS.getParam().split(","));
+		List<String> param2 = Arrays.asList(VIAConnectProMetric.PLIST_All_STATUS.getParam().split(","));
 		// the output should be: Plist|all|4|jolly_0#mike_1#Smith_2
-		String rawUserNames = sendTelnetCommand(VIAConnectProMonitoringMetric.PLIST_All_STATUS.getCommand(), param2, false);
+		String rawUserNames = sendTelnetCommand(VIAConnectProMetric.PLIST_All_STATUS.getCommand(), param2, false);
 		String[] usernamesAndStatus = rawResponseHandling(rawUserNames).split("#");
 		Map<String, String> userNameAndStatusMap = new HashMap<>();
-		for (String usernameAndStatus: usernamesAndStatus) {
+		for (String usernameAndStatus : usernamesAndStatus) {
 			String username = usernameAndStatus.split("_")[0];
 			String status = usernameAndStatus.split("_")[1];
-			userNameAndStatusMap.put(username,status);
+			userNameAndStatusMap.put(username, status);
 		}
 		participantListDTO.setUserAndStatusMap(userNameAndStatusMap);
 		return participantListDTO;
@@ -178,14 +244,14 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @throws Exception When fail to get participant list
 	 */
 	private void populateParticipantGroup(Map<String, String> stats) throws Exception {
-		String groupName = VIAConnectProMonitoringMetric.PLIST_All_STATUS.getName();
+		String groupName = VIAConnectProMetric.PLIST_All_STATUS.getGroupName();
 		ParticipantListDTO participantListDTO = getListParticipant();
 		stats.put(String.format("%s#CurrentLoggedInUsers", groupName), String.valueOf(participantListDTO.getLoggedInUsers()));
 		int i = 0;
-		for (Map.Entry<String,String> entry : participantListDTO.getUserAndStatusMap().entrySet()) {
+		for (Map.Entry<String, String> entry : participantListDTO.getUserAndStatusMap().entrySet()) {
 			i++;
-			stats.put(String.format("%s#Participant%s", groupName,(i+1)), entry.getKey());
-			stats.put(String.format("%s#Participant%sStatus",groupName,(i+1)), entry.getValue());
+			stats.put(String.format("%s#Participant%s", groupName, (i + 1)), entry.getKey());
+			stats.put(String.format("%s#Participant%sStatus", groupName, (i + 1)), entry.getValue());
 		}
 	}
 
@@ -197,28 +263,28 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @throws Exception When fail to get Participant DTO and display status
 	 */
 	private void populateDisplayStatus(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		String groupName = VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getName();
-		List<String> values = new ArrayList<>();
-		if (!isValidUsernameListAndPopulateList(stats, controls, groupName)) {
+		String groupName = VIAConnectProMetric.DISPLAY_STATUS_GET.getGroupName();
+		List<String> usernames = new ArrayList<>();
+		if (!isValidUsernameListAndPopulateList(stats, controls, groupName, usernames)) {
 			return;
 		}
 
 		List<String> param = new ArrayList<>();
-		param.add(VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getParam());
-		param.add(values.get(0));
+		param.add(VIAConnectProMetric.DISPLAY_STATUS_GET.getParam());
+		param.add(usernames.get(0));
 		// the output should be: Plist|all|4|jolly_0#mike_1#Smith_2
-		String rawDisplayStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getCommand(), param, false);
+		String rawDisplayStatus = sendTelnetCommand(VIAConnectProMetric.DISPLAY_STATUS_GET.getCommand(), param, false);
 		String displayStatus = rawResponseHandling(rawDisplayStatus);
-		stats.put(String.format("%s#UserDisplayStatus",groupName), displayStatus);
-		stats.put(String.format("%s#UserPresentation",groupName), "");
+		stats.put(String.format("%s#UserDisplayStatus", groupName), displayStatus);
+		stats.put(String.format("%s#UserPresentation", groupName), "");
 
 		List<String> statuses = new ArrayList<>();
 		statuses.add("On");
 		statuses.add("Off");
 		statuses.add("Deny");
-		controls.add(createDropdown(String.format("%s#UserPresentation",groupName), statuses, "On"));
-		stats.put(String.format("%s#Apply",groupName), "");
-		controls.add(createButton(String.format("%s#Apply",groupName), VIAConnectProConstant.APPLY, "Applying..."));
+		controls.add(createDropdown(String.format("%s#UserPresentation", groupName), statuses, "On"));
+		stats.put(String.format("%s#Apply", groupName), "");
+		controls.add(createButton(String.format("%s#Apply", groupName), VIAConnectProConstant.APPLY, "Applying..."));
 	}
 
 	/**
@@ -229,203 +295,253 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @throws Exception When fail to get active status, appear status, room code, refresh time
 	 */
 	private void populateRoomCode(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		String groupName = VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_ACTIVE_STATUS.getName();
-		List<String> param = Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_ACTIVE_STATUS.getParam().split(","));
+		String groupName = VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_ACTIVE_STATUS.getGroupName();
+		List<String> param = Arrays.asList(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_ACTIVE_STATUS.getParam().split(","));
 		// the output should be: RCode|Get|ActiveStatus|0/1
-		String rawActiveStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_ACTIVE_STATUS.getCommand(), param, false);
+		String rawActiveStatus = sendTelnetCommand(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_ACTIVE_STATUS.getCommand(), param, false);
 		String activeStatus = rawResponseHandling(rawActiveStatus);
-		stats.put(String.format("%s#ActiveStatus",groupName), "");
-		controls.add(createSwitch(String.format("%s#ActiveStatus",groupName), Integer.parseInt(activeStatus), "Disable", "Enable"));
+		stats.put(String.format("%s#ActiveStatus", groupName), "");
+		controls.add(createSwitch(String.format("%s#ActiveStatus", groupName), Integer.parseInt(activeStatus), "Disable", "Enable"));
 
 		// the output should be: RCode|Get|AppearStatus|0/1
-		List<String> param2 = Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_APPEAR_STATUS.getParam().split(","));
-		String rawAppearStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_APPEAR_STATUS.getCommand(), param2, false);
+		List<String> param2 = Arrays.asList(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_APPEAR_STATUS.getParam().split(","));
+		String rawAppearStatus = sendTelnetCommand(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_APPEAR_STATUS.getCommand(), param2, false);
 		String appearStatus = rawResponseHandling(rawAppearStatus);
-		stats.put(String.format("%s#AppearStatus",groupName), "");
-		controls.add(createSwitch(String.format("%s#AppearStatus",groupName), Integer.parseInt(appearStatus), "Disable", "Enable"));
+		stats.put(String.format("%s#AppearStatus", groupName), "");
+		controls.add(createSwitch(String.format("%s#AppearStatus", groupName), Integer.parseInt(appearStatus), "Disable", "Enable"));
 
-		List<String> param3 = Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_CODE.getParam().split(","));
-		String rawCode = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_CODE.getCommand(), param3, false);
+		List<String> param3 = Arrays.asList(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_CODE.getParam().split(","));
+		String rawCode = sendTelnetCommand(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_CODE.getCommand(), param3, false);
 		String code = rawResponseHandling(rawCode);
-		stats.put(String.format("%s#Code",groupName), code);
+		stats.put(String.format("%s#Code", groupName), code);
 
-		List<String> param4 = Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_RTIME.getParam().split(","));
-		String rawRefreshTime = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_CODE_SETTINGS_GET_RTIME.getCommand(), param4, false);
+		List<String> param4 = Arrays.asList(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_RTIME.getParam().split(","));
+		String rawRefreshTime = sendTelnetCommand(VIAConnectProMetric.ROOM_CODE_SETTINGS_GET_RTIME.getCommand(), param4, false);
 		String refreshTime = rawResponseHandling(rawRefreshTime);
-		stats.put(String.format("%s#RefreshTime(minutes)",groupName), "");
-		controls.add(createText(String.format("%s#RefreshTime(minutes)",groupName), refreshTime));
+		stats.put(String.format("%s#RefreshTime(minutes)", groupName), "");
+		controls.add(createText(String.format("%s#RefreshTime(minutes)", groupName), refreshTime));
 	}
 
 	private void populateRoomName(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		String groupName = VIAConnectProMonitoringMetric.ROOM_NAME_SETTINGS_GET.getName();
-		List<String> param = Arrays.asList(VIAConnectProMonitoringMetric.ROOM_NAME_SETTINGS_GET.getParam().split(","));
-		String rawRoomNameStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_NAME_SETTINGS_GET.getCommand(), param, false);
+		String groupName = VIAConnectProMetric.ROOM_NAME_SETTINGS_GET.getGroupName();
+		List<String> param = Arrays.asList(VIAConnectProMetric.ROOM_NAME_SETTINGS_GET.getParam().split(","));
+		String rawRoomNameStatus = sendTelnetCommand(VIAConnectProMetric.ROOM_NAME_SETTINGS_GET.getCommand(), param, false);
 		String roomNameStatus = rawResponseHandling(rawRoomNameStatus);
-		stats.put(String.format("%s#Status",groupName), "");
-		controls.add(createSwitch(String.format("%s#Status",groupName), Integer.parseInt(roomNameStatus), "Disable", "Enable"));
+		stats.put(String.format("%s#Status", groupName), "");
+		controls.add(createSwitch(String.format("%s#Status", groupName), Integer.parseInt(roomNameStatus), "Disable", "Enable"));
 
-		List<String> param2 = Arrays.asList(VIAConnectProMonitoringMetric.ROOM_NAME_SETTINGS_GET.getParam().split(","));
-		String rawRoomName = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_NAME_SETTINGS_NAME.getCommand(), param2, false);
+		List<String> param2 = Arrays.asList(VIAConnectProMetric.ROOM_NAME_SETTINGS_GET.getParam().split(","));
+		String rawRoomName = sendTelnetCommand(VIAConnectProMetric.ROOM_NAME_SETTINGS_NAME.getCommand(), param2, false);
 		String roomName = rawResponseHandling(rawRoomName);
-		stats.put(String.format("%s#Name",groupName), "");
-		controls.add(createText(String.format("%s#Name",groupName), roomName));
+		stats.put(String.format("%s#Name", groupName), "");
+		controls.add(createText(String.format("%s#Name", groupName), roomName));
 	}
 
 	/**
 	 * Populate monitoring and controlling properties for DND group
 	 * - The value of DNDMode's switch is not the default value.
+	 *
 	 * @param stats Map of statistics
 	 * @param controls List of AdvancedControllableProperty
 	 * @throws Exception When fail to get participant list.
 	 */
 	private void populateDND(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		String groupName =  VIAConnectProControllingMetric.DND_SET.getName();
-		if (!isValidUsernameListAndPopulateList(stats, controls, groupName)) {
+		String groupName = VIAConnectProMetric.DND_SET.getGroupName();
+		List<String> usernames = new ArrayList<>();
+		if (!isValidUsernameListAndPopulateList(stats, controls, groupName, usernames)) {
 			return;
 		}
-		stats.put(String.format("%s#DNDMode",groupName), "");
-		controls.add(createSwitch(String.format("%s#DNDMode",groupName), 0, "Disable", "Enable"));
-		stats.put(String.format("%s#Apply",groupName), "");
-		controls.add(createButton(String.format("%s#Apply",groupName), VIAConnectProConstant.APPLY, "Applying..."));
+		stats.put(String.format("%s#DNDMode", groupName), "");
+		controls.add(createSwitch(String.format("%s#DNDMode", groupName), 0, "Disable", "Enable"));
+		stats.put(String.format("%s#Apply", groupName), "");
+		controls.add(createButton(String.format("%s#Apply", groupName), VIAConnectProConstant.APPLY, "Applying..."));
 	}
 
 	private void populateUserComputerControl(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		String groupName = VIAConnectProControllingMetric.USER_COMPUTER_CONTROL.getName();
-		if (!isValidUsernameListAndPopulateList(stats, controls, groupName)) {
+		String groupName = VIAConnectProMetric.USER_COMPUTER_CONTROL.getGroupName();
+		List<String> usernames = new ArrayList<>();
+		if (!isValidUsernameListAndPopulateList(stats, controls, groupName, usernames)) {
 			return;
 		}
 		stats.put(String.format("%s#UserControl", groupName), "");
 		controls.add(createSwitch(String.format("%s#UserControl", groupName), 1, "Disable", "Enable"));
-		stats.put(String.format("%s#%s",groupName,VIAConnectProConstant.APPLY), "");
-		controls.add(createButton(String.format("%s#%s",groupName,VIAConnectProConstant.APPLY), VIAConnectProConstant.APPLY, "Applying..."));
+		stats.put(String.format("%s#%s", groupName, VIAConnectProConstant.APPLY), "");
+		controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.APPLY), VIAConnectProConstant.APPLY, "Applying..."));
 	}
 
 	private void populateKickOff(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		String groupName = VIAConnectProControllingMetric.KICK_OFF.getName();
-		if (!isValidUsernameListAndPopulateList(stats, controls, groupName)) {
+		String groupName = VIAConnectProMetric.KICK_OFF.getGroupName();
+		List<String> usernames = new ArrayList<>();
+		if (!isValidUsernameListAndPopulateList(stats, controls, groupName, usernames)) {
 			return;
 		}
-		stats.put(String.format("%s#%s",groupName,VIAConnectProConstant.KICK), "");
-		controls.add(createButton(String.format("%s#%s",groupName,VIAConnectProConstant.KICK), VIAConnectProConstant.KICK, "Kicking user ..."));
+		stats.put(String.format("%s#%s", groupName, VIAConnectProConstant.KICK), "");
+		controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.KICK), VIAConnectProConstant.KICK, "Kicking user ..."));
 	}
 
 	private void populateStreamingControl(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		String groupName = VIAConnectProControllingMetric.STREAMING_START.getName();
-		if (!isValidUsernameListAndPopulateList(stats, controls, groupName)) {
+		String groupName = VIAConnectProMetric.STREAMING_START.getGroupName();
+		List<String> usernames = new ArrayList<>();
+		if (!isValidUsernameListAndPopulateList(stats, controls, groupName, usernames)) {
 			return;
 		}
-		stats.put(String.format("%s#Action",groupName), "");
+		stats.put(String.format("%s#Action", groupName), "");
 		List<String> streamModes = new ArrayList<>();
 		streamModes.add(VIAConnectProConstant.START);
 		streamModes.add(VIAConnectProConstant.STOP);
 		streamModes.add(VIAConnectProConstant.RESTART);
 		streamModes.add(VIAConnectProConstant.CHANGE);
-		controls.add(createDropdown(String.format("%s#Action",groupName), streamModes, VIAConnectProConstant.START));
+		controls.add(createDropdown(String.format("%s#Action", groupName), streamModes, VIAConnectProConstant.START));
 
-		stats.put(String.format("%s#Apply",groupName), "");
-		controls.add(createButton(String.format("%s#Apply",groupName), VIAConnectProConstant.APPLY, "Applying the stream..."));
+		stats.put(String.format("%s#Apply", groupName), "");
+		controls.add(createButton(String.format("%s#Apply", groupName), VIAConnectProConstant.APPLY, "Applying the stream..."));
 	}
 
-	private void populateOtherProperties(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		// 3. Volume + Control
-		String rawVolume = sendTelnetCommand(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false);
-		String volume = rawResponseHandling(rawVolume);
-		stats.put("Volume", volume);
-		controls.add(createSlider("Volume", "0%", "100%", 0f, 100f, Float.valueOf(volume)));
-		// 4.IP Information
-		String rawIpInformation = sendTelnetCommand(VIAConnectProMonitoringMetric.IP_INFORMATION.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.IP_INFORMATION.getCommand()), false);
-		String[] ipInformation = rawIpInformation.split("\\|");
-		stats.put(String.format("%s#IpAddress",VIAConnectProMonitoringMetric.IP_INFORMATION.getName()), ipInformation[0]);
-		stats.put(String.format("%s#SubnetMask",VIAConnectProMonitoringMetric.IP_INFORMATION.getName()), ipInformation[1]);
-		stats.put(String.format("%s#Gateway",VIAConnectProMonitoringMetric.IP_INFORMATION.getName()), ipInformation[2]);
-		stats.put(String.format("%s#DnsServer",VIAConnectProMonitoringMetric.IP_INFORMATION.getName()), ipInformation[3]);
-		stats.put(String.format("%s#HostName",VIAConnectProMonitoringMetric.IP_INFORMATION.getName()), ipInformation[4]);
+	private void populateWifiGuestMode(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param11 = Collections.singletonList(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getParam());
+		String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getCommand(), param11, false);
+		String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
+		stats.put(VIAConnectProMetric.WIFI_GUEST_MODE.getGroupName(), "");
+		controls.add(createSwitch(VIAConnectProMetric.WIFI_GUEST_MODE.getGroupName(), Integer.parseInt(wifiGuestMode), VIAConnectProConstant.STOP, VIAConnectProConstant.START));
+	}
 
-		// 7. Datetime
-		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.DATETIME_DISPLAY_STATUS_GET.getParam());
-		String rawDatetime = sendTelnetCommand(VIAConnectProMonitoringMetric.DATETIME_DISPLAY_STATUS_GET.getCommand(), param, false);
-		String datetime = rawResponseHandling(rawDatetime);
-		stats.put(VIAConnectProMonitoringMetric.DATETIME_DISPLAY_STATUS_GET.getName(), "");
-		controls.add(createSwitch(VIAConnectProMonitoringMetric.DATETIME_DISPLAY_STATUS_GET.getName(), Integer.parseInt(datetime), "Invisible", "Visible"));
-		// 8. Presentation Mode Status + control
-		List<String> param2 = Collections.singletonList(VIAConnectProMonitoringMetric.PRESENTATION_MODE_STATUS_GET.getParam());
-		String rawPresentationModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.PRESENTATION_MODE_STATUS_GET.getCommand(), param2, false);
-		String presentationModeStatus = rawResponseHandling(rawPresentationModeStatus);
-		stats.put(VIAConnectProMonitoringMetric.PRESENTATION_MODE_STATUS_GET.getName(), "");
-		controls.add(createSwitch(VIAConnectProMonitoringMetric.PRESENTATION_MODE_STATUS_GET.getName(), Integer.parseInt(presentationModeStatus), "Disable", "Enable"));
-		// 9.Log Mod Status + control
-		List<String> param3 = Collections.singletonList(VIAConnectProMonitoringMetric.LOG_MODE_STATUS.getParam());
-		String rawLogModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.LOG_MODE_STATUS.getCommand(), param3, false);
-		String logModeStatus = rawResponseHandling(rawLogModeStatus);
-		stats.put(VIAConnectProMonitoringMetric.LOG_MODE_STATUS.getName(), "");
-		controls.add(createSwitch(VIAConnectProMonitoringMetric.LOG_MODE_STATUS.getName(), Integer.parseInt(logModeStatus), "Disable", "Enable"));
-		// 10.Quick Client Access Status + control
-		List<String> param4 = Collections.singletonList(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getParam());
-		String rawQuickClientAccessStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getCommand(), param4, false);
-		String quickClientAccessStatus = rawResponseHandling(rawQuickClientAccessStatus);
-		stats.put(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getName(), "");
-		controls.add(createSwitch(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getName(), Integer.parseInt(quickClientAccessStatus), "Disable", "Enable"));
+	private void populatePartPresentConfirm(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param10 = Collections.singletonList(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getParam());
+		String rawPartPresetConfirm = sendTelnetCommand(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getCommand(), param10, false);
+		String partPresetConfirm = rawResponseHandling(rawPartPresetConfirm);
+		stats.put(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getGroupName(), "");
+		controls.add(createSwitch(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getGroupName(), Integer.parseInt(partPresetConfirm), "Off", "On"));
+	}
 
-		// 14. ScreenShare + control. Not the default value of the switch
-		stats.put(VIAConnectProControllingMetric.SCREEN_SHARE_STATUS_SET.getName(), "");
-		controls.add(createSwitch(VIAConnectProControllingMetric.SCREEN_SHARE_STATUS_SET.getName(), 0, "Off", "On"));
+	private void populateWhiteBoard(Map<String, String> stats, List<AdvancedControllableProperty> controls) {
+		stats.put(String.format("%s#OffModeAnnotation", VIAConnectProMetric.WHITE_BOARD_ON.getGroupName()), "");
+		controls.add(createSwitch(String.format("%s#OffModeAnnotation", VIAConnectProMetric.WHITE_BOARD_ON.getGroupName()), 1, "AutoSave", "Discard"));
+		stats.put(String.format("%s#Status", VIAConnectProMetric.WHITE_BOARD_ON.getGroupName()), "");
+		controls.add(createSwitch(String.format("%s#Status", VIAConnectProMetric.WHITE_BOARD_ON.getGroupName()), 0, "Off", "On"));
+		stats.put(String.format("%s#Switch", VIAConnectProMetric.WHITE_BOARD_ON.getGroupName()), "");
+		controls.add(createButton(String.format("%s#Switch", VIAConnectProMetric.WHITE_BOARD_ON.getGroupName()), "Switch", "Switching mode..."));
+	}
 
-		// 15.Gateway serial number
-		List<String> param5 = Collections.singletonList(VIAConnectProMonitoringMetric.GATEWAY_SERIAL_NUMBER_GET.getParam());
-		String rawGatewaySerialNumber = sendTelnetCommand(VIAConnectProMonitoringMetric.GATEWAY_SERIAL_NUMBER_GET.getCommand(), param5, false);
-		String gatewaySerialNumber = rawResponseHandling(rawGatewaySerialNumber);
-		stats.put(VIAConnectProMonitoringMetric.GATEWAY_SERIAL_NUMBER_GET.getName(), gatewaySerialNumber);
-		// 16. Mac Address
-		List<String> param6 = Collections.singletonList(VIAConnectProMonitoringMetric.GATEWAY_MAC_ADDRESS_GET.getParam());
-		String rawGatewayMacAddress = sendTelnetCommand(VIAConnectProMonitoringMetric.GATEWAY_MAC_ADDRESS_GET.getCommand(), param6, false);
-		String gatewayMacAddress = rawResponseHandling(rawGatewayMacAddress);
-		stats.put(VIAConnectProMonitoringMetric.GATEWAY_MAC_ADDRESS_GET.getName(), gatewayMacAddress);
-		// 17. Gateway version number
-		List<String> param7 = Collections.singletonList(VIAConnectProMonitoringMetric.GATEWAY_VERSION_GET.getParam());
-		String rawGatewayVersion = sendTelnetCommand(VIAConnectProMonitoringMetric.GATEWAY_VERSION_GET.getCommand(), param7, false);
-		String gatewayVersion = rawResponseHandling(rawGatewayVersion);
-		stats.put(VIAConnectProMonitoringMetric.GATEWAY_VERSION_GET.getName(),gatewayVersion);
-		// 18. Chrome Status + control
-		List<String> param8 = Collections.singletonList(VIAConnectProControllingMetric.CHROME_SET_STATUS.getParam());
-		String rawChromeStatus = sendTelnetCommand(VIAConnectProControllingMetric.CHROME_SET_STATUS.getCommand(), param8, false);
+	private void populateAudioDevices(Map<String, String> stats) {
+		stats.put(VIAConnectProMetric.AUDIO_DEVICES_GET.getGroupName(), "");
+	}
+
+	private void populateChromeStatus(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param8 = Collections.singletonList(VIAConnectProMetric.CHROME_STATUS_SET.getParam());
+		String rawChromeStatus = sendTelnetCommand(VIAConnectProMetric.CHROME_STATUS_SET.getCommand(), param8, false);
 		String chromeStatus = rawResponseHandling(rawChromeStatus);
-		stats.put(String.format("%s#ConnectionStatus", VIAConnectProControllingMetric.CHROME_SET_STATUS.getName()), "");
-		controls.add(createSwitch(String.format("%s#ConnectionStatus", VIAConnectProControllingMetric.CHROME_SET_STATUS.getName()), Integer.parseInt(chromeStatus), "Off", "On"));
+		stats.put(String.format("%s#ConnectionStatus", VIAConnectProMetric.CHROME_STATUS_SET.getGroupName()), "");
+		controls.add(createSwitch(String.format("%s#ConnectionStatus", VIAConnectProMetric.CHROME_STATUS_SET.getGroupName()), Integer.parseInt(chromeStatus), "Off", "On"));
 
-		List<String> param9 = Collections.singletonList(VIAConnectProControllingMetric.CHROME_SET_STATUS.getParam());
-		String rawChromeAPIModeStatus = sendTelnetCommand(VIAConnectProControllingMetric.CHROME_SET_STATUS.getCommand(), param9, false);
+		List<String> param9 = Collections.singletonList(VIAConnectProMetric.CHROME_STATUS_SET.getParam());
+		String rawChromeAPIModeStatus = sendTelnetCommand(VIAConnectProMetric.CHROME_STATUS_SET.getCommand(), param9, false);
 		String chromeAPIModeStatus = rawResponseHandling(rawChromeAPIModeStatus);
-		stats.put(String.format("%s#APIMode",VIAConnectProControllingMetric.CHROME_SET_API_MODE.getName()), "");
-		controls.add(createSwitch(String.format("%s#APIMode",VIAConnectProControllingMetric.CHROME_SET_API_MODE.getName()), Integer.parseInt(chromeAPIModeStatus), "non-SSL", "SSL"));
-		// 19. Room Overlay Status + control
-		List<String> param10 = Collections.singletonList(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getParam());
-		String rawRoomOverlayStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getCommand(), param10, false);
+		stats.put(String.format("%s#APIMode", VIAConnectProMetric.CHROME_API_MODE_SET.getGroupName()), "");
+		controls.add(createSwitch(String.format("%s#APIMode", VIAConnectProMetric.CHROME_API_MODE_SET.getGroupName()), Integer.parseInt(chromeAPIModeStatus), "non-SSL", "SSL"));
+	}
+
+	private void populateGatewayVersion(Map<String, String> stats) throws Exception {
+		List<String> param7 = Collections.singletonList(VIAConnectProMetric.GATEWAY_VERSION_GET.getParam());
+		String rawGatewayVersion = sendTelnetCommand(VIAConnectProMetric.GATEWAY_VERSION_GET.getCommand(), param7, false);
+		String gatewayVersion = rawResponseHandling(rawGatewayVersion);
+		stats.put(VIAConnectProMetric.GATEWAY_VERSION_GET.getGroupName(), gatewayVersion);
+	}
+
+	private void populateMacAddress(Map<String, String> stats) throws Exception {
+		List<String> param6 = Collections.singletonList(VIAConnectProMetric.GATEWAY_MAC_ADDRESS_GET.getParam());
+		String rawGatewayMacAddress = sendTelnetCommand(VIAConnectProMetric.GATEWAY_MAC_ADDRESS_GET.getCommand(), param6, false);
+		String gatewayMacAddress = rawResponseHandling(rawGatewayMacAddress);
+		stats.put(VIAConnectProMetric.GATEWAY_MAC_ADDRESS_GET.getGroupName(), gatewayMacAddress);
+	}
+
+	private void populateGatewaySerialNumber(Map<String, String> stats) throws Exception {
+		List<String> param5 = Collections.singletonList(VIAConnectProMetric.GATEWAY_SERIAL_NUMBER_GET.getParam());
+		String rawGatewaySerialNumber = sendTelnetCommand(VIAConnectProMetric.GATEWAY_SERIAL_NUMBER_GET.getCommand(), param5, false);
+		String gatewaySerialNumber = rawResponseHandling(rawGatewaySerialNumber);
+		stats.put(VIAConnectProMetric.GATEWAY_SERIAL_NUMBER_GET.getGroupName(), gatewaySerialNumber);
+	}
+
+	private void populateScreenShare(Map<String, String> stats, List<AdvancedControllableProperty> controls) {
+		stats.put(VIAConnectProMetric.SCREEN_SHARE_STATUS_SET.getGroupName(), "");
+		controls.add(createSwitch(VIAConnectProMetric.SCREEN_SHARE_STATUS_SET.getGroupName(), 0, "Off", "On"));
+	}
+
+	private void populateQuickClientAccess(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param4 = Collections.singletonList(VIAConnectProMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getParam());
+		String rawQuickClientAccessStatus = sendTelnetCommand(VIAConnectProMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getCommand(), param4, false);
+		String quickClientAccessStatus = rawResponseHandling(rawQuickClientAccessStatus);
+		stats.put(VIAConnectProMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getGroupName(), "");
+		controls.add(createSwitch(VIAConnectProMetric.QUICK_CLIENT_ACCESS_STATUS_GET.getGroupName(), Integer.parseInt(quickClientAccessStatus), "Disable", "Enable"));
+	}
+
+	private void populateLogMode(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param3 = Collections.singletonList(VIAConnectProMetric.LOG_MODE_STATUS_GET.getParam());
+		String rawLogModeStatus = sendTelnetCommand(VIAConnectProMetric.LOG_MODE_STATUS_GET.getCommand(), param3, false);
+		String logModeStatus = rawResponseHandling(rawLogModeStatus);
+		stats.put(VIAConnectProMetric.LOG_MODE_STATUS_GET.getGroupName(), "");
+		controls.add(createSwitch(VIAConnectProMetric.LOG_MODE_STATUS_GET.getGroupName(), Integer.parseInt(logModeStatus), "Disable", "Enable"));
+	}
+
+	private void populatePresentationMode(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param2 = Collections.singletonList(VIAConnectProMetric.PRESENTATION_MODE_STATUS_GET.getParam());
+		String rawPresentationModeStatus = sendTelnetCommand(VIAConnectProMetric.PRESENTATION_MODE_STATUS_GET.getCommand(), param2, false);
+		String presentationModeStatus = rawResponseHandling(rawPresentationModeStatus);
+		stats.put(VIAConnectProMetric.PRESENTATION_MODE_STATUS_GET.getGroupName(), "");
+		controls.add(createSwitch(VIAConnectProMetric.PRESENTATION_MODE_STATUS_GET.getGroupName(), Integer.parseInt(presentationModeStatus), "Disable", "Enable"));
+	}
+
+	private void populateDatetime(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param = Collections.singletonList(VIAConnectProMetric.DATETIME_DISPLAY_STATUS_GET.getParam());
+		String rawDatetime = sendTelnetCommand(VIAConnectProMetric.DATETIME_DISPLAY_STATUS_GET.getCommand(), param, false);
+		String datetime = rawResponseHandling(rawDatetime);
+		stats.put(VIAConnectProMetric.DATETIME_DISPLAY_STATUS_GET.getGroupName(), "");
+		controls.add(createSwitch(VIAConnectProMetric.DATETIME_DISPLAY_STATUS_GET.getGroupName(), Integer.parseInt(datetime), "Invisible", "Visible"));
+	}
+
+	private void populateVolume(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		String rawVolume = sendTelnetCommand(VIAConnectProMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMetric.VOLUME.getParam()), false);
+		String volume = rawResponseHandling(rawVolume);
+		stats.put(VIAConnectProMetric.VOLUME.getGroupName(), volume);
+		controls.add(createSlider("Volume", "0%", "100%", 0f, 100f, Float.valueOf(volume)));
+	}
+
+	private void populateIpInformation(Map<String, String> stats) throws Exception {
+		String rawIpInformation = sendTelnetCommand(VIAConnectProMetric.IP_INFORMATION.getCommand(), Collections.singletonList(VIAConnectProMetric.IP_INFORMATION.getCommand()), false);
+		String[] ipInformation = rawIpInformation.split("\\|");
+		stats.put(String.format("%s#IpAddress", VIAConnectProMetric.IP_INFORMATION.getGroupName()), ipInformation[0]);
+		stats.put(String.format("%s#SubnetMask", VIAConnectProMetric.IP_INFORMATION.getGroupName()), ipInformation[1]);
+		stats.put(String.format("%s#Gateway", VIAConnectProMetric.IP_INFORMATION.getGroupName()), ipInformation[2]);
+		stats.put(String.format("%s#DnsServer", VIAConnectProMetric.IP_INFORMATION.getGroupName()), ipInformation[3]);
+		stats.put(String.format("%s#HostName", VIAConnectProMetric.IP_INFORMATION.getGroupName()), ipInformation[4]);
+	}
+
+	private void populateRoomOverlay(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param10 = Collections.singletonList(VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getParam());
+		String rawRoomOverlayStatus = sendTelnetCommand(VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getCommand(), param10, false);
 		String roomOverlayStatus = rawResponseHandling(rawRoomOverlayStatus);
-		stats.put(String.format("%s#Status",VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getName()), "");
-		controls.add(createSwitch(String.format("%s#Status",VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getName()), Integer.parseInt(roomOverlayStatus), "Off", "On"));
+		stats.put(String.format("%s#Status", VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getGroupName()), "");
+		controls.add(createSwitch(String.format("%s#Status", VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getGroupName()), Integer.parseInt(roomOverlayStatus), "Off", "On"));
 
-		List<String> param11 = Collections.singletonList(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getParam());
-		String rawRoomOverlayAutoHideTime = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getCommand(), param11, false);
+		List<String> param11 = Collections.singletonList(VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getParam());
+		String rawRoomOverlayAutoHideTime = sendTelnetCommand(VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getCommand(), param11, false);
 		String roomOverlayAutoHideTime = rawResponseHandling(rawRoomOverlayAutoHideTime);
-		stats.put(String.format("%s#AutoHideTime",VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getName()),"");
-		controls.add(createSwitch(String.format("%s#AutoHideTime",VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getName()), Integer.parseInt(roomOverlayAutoHideTime), "Off", "On"));
-		stats.put(String.format("%s#Apply",VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getName()), "");
-		controls.add(createButton(String.format("%s#Apply",VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getName()), VIAConnectProConstant.APPLY, "Applying the stream..."));
+		stats.put(String.format("%s#AutoHideTime", VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getGroupName()), "");
+		controls.add(createSwitch(String.format("%s#AutoHideTime", VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getGroupName()), Integer.parseInt(roomOverlayAutoHideTime), "Off", "On"));
+		stats.put(String.format("%s#Apply", VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getGroupName()), "");
+		controls.add(createButton(String.format("%s#Apply", VIAConnectProMetric.ROOM_OVERLAY_STATUS_GET.getGroupName()), VIAConnectProConstant.APPLY, "Applying the stream..."));
+	}
 
-		// 20. Audio Devices TODO
-		stats.put(VIAConnectProMonitoringMetric.AUDIO_DEVICES_GET.getName(), "");
-		// 21. Streaming Status
-
-		List<String> param12 = Collections.singletonList(VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getParam());
-		String rawStreamingGetResponse = sendTelnetCommand(VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getCommand(), param12, false);
+	private void populateStreamingStatus(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
+		List<String> param = Collections.singletonList(VIAConnectProMetric.STREAMING_STATUS_GET.getParam());
+		String rawStreamingGetResponse = sendTelnetCommand(VIAConnectProMetric.STREAMING_STATUS_GET.getCommand(), param, false);
 		String[] streamingGetResponse = rawStreamingGetResponse.split("\\|");
 
-		List<String> param13 = Collections.singletonList(VIAConnectProMonitoringMetric.STREAMING_STATUS_SSTATUS_GET.getParam());
-		String rawStreamingSStatusResponse = sendTelnetCommand(VIAConnectProMonitoringMetric.STREAMING_STATUS_SSTATUS_GET.getCommand(), param13, false);
+		List<String> param1 = Collections.singletonList(VIAConnectProMetric.STREAMING_STATUS_SSTATUS_GET.getParam());
+		String rawStreamingSStatusResponse = sendTelnetCommand(VIAConnectProMetric.STREAMING_STATUS_SSTATUS_GET.getCommand(), param1, false);
 		String[] streamingSStatusResponse = rawStreamingSStatusResponse.split("\\|");
 
-		stats.put(String.format("%s#Datetime", VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()), streamingSStatusResponse[2]);
-		stats.put(String.format("%s#URLStatus", VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()), streamingSStatusResponse[1]);
+		stats.put(String.format("%s#Datetime", VIAConnectProMetric.STREAMING_STATUS_GET.getGroupName()), streamingSStatusResponse[2]);
+		stats.put(String.format("%s#URLStatus", VIAConnectProMetric.STREAMING_STATUS_GET.getGroupName()), streamingSStatusResponse[1]);
 
 		int intStreamingGetResponse = Integer.parseInt(streamingGetResponse[2]);
 		String statusValue;
@@ -439,46 +555,25 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			default:
 				statusValue = "";
 		}
-		stats.put(String.format("%s#Status", VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()), statusValue);
+		stats.put(String.format("%s#Status", VIAConnectProMetric.STREAMING_STATUS_GET.getGroupName()), statusValue);
 		if (intStreamingGetResponse == 0) {
-			stats.put(String.format("%s#URL",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()),"No URL");
+			stats.put(String.format("%s#URL", VIAConnectProMetric.STREAMING_STATUS_GET.getGroupName()), "No URL");
 		} else {
 			if (streamingGetResponse.length == 4) {
 				// Single display
-				stats.put(String.format("%s#URL",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()),streamingGetResponse[3]);
+				stats.put(String.format("%s#URL", VIAConnectProMetric.STREAMING_STATUS_GET.getGroupName()), streamingGetResponse[3]);
 			} else if (streamingGetResponse.length == 5) {
 				// Dual display
-				stats.put(String.format("%s#URL1",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()),streamingGetResponse[3]);
-				stats.put(String.format("%s#URL2",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()),streamingGetResponse[4]);
+				stats.put(String.format("%s#URL1", VIAConnectProMetric.STREAMING_STATUS_GET.getGroupName()), streamingGetResponse[3]);
+				stats.put(String.format("%s#URL2", VIAConnectProMetric.STREAMING_STATUS_GET.getGroupName()), streamingGetResponse[4]);
 			}
 		}
 
+		stats.put(String.format("%s#NewStreamURL", VIAConnectProMetric.STREAMING_URL.getGroupName()), "");
+		controls.add(createText(String.format("%s#NewStreamURL", VIAConnectProMetric.STREAMING_URL.getGroupName()), "newstreamurl.com"));
 
-		stats.put(String.format("%s#NewStreamURL",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName() ), "");
-		controls.add(createText(String.format("%s#NewStreamURL",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()), "newstreamurl.com"));
-
-		stats.put(String.format("%s#StartNewStream",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()), "");
-		controls.add(createButton(String.format("%s#StartNewStream",VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getName()), VIAConnectProConstant.START, "Starting..."));
-
-		// 23. Whiteboard
-		stats.put(String.format("%s#OffModeAnnotation",VIAConnectProControllingMetric.WHITE_BOARD_ON.getName()), "");
-		controls.add(createSwitch(String.format("%s#OffModeAnnotation",VIAConnectProControllingMetric.WHITE_BOARD_ON.getName()), 1, "AutoSave", "Discard"));
-		stats.put(String.format("%s#Status",VIAConnectProControllingMetric.WHITE_BOARD_ON.getName()), "");
-		controls.add(createSwitch(String.format("%s#Status",VIAConnectProControllingMetric.WHITE_BOARD_ON.getName()), 0, "Off", "On"));
-		stats.put(String.format("%s#Switch",VIAConnectProControllingMetric.WHITE_BOARD_ON.getName()), "");
-		controls.add(createButton(String.format("%s#Switch",VIAConnectProControllingMetric.WHITE_BOARD_ON.getName()), "Switch", "Switching mode..."));
-		// 24. Part Present Confirm + control
-		List<String> param14 = Collections.singletonList(VIAConnectProMonitoringMetric.PART_PRESET_CONFIRM_GET.getParam());
-		String rawPartPresetConfirm = sendTelnetCommand(VIAConnectProMonitoringMetric.PART_PRESET_CONFIRM_GET.getCommand(), param14, false);
-		String partPresetConfirm = rawResponseHandling(rawPartPresetConfirm);
-		stats.put(VIAConnectProMonitoringMetric.PART_PRESET_CONFIRM_GET.getName(), "");
-		controls.add(createSwitch(VIAConnectProMonitoringMetric.PART_PRESET_CONFIRM_GET.getName(), Integer.parseInt(partPresetConfirm), "Off", "On"));
-		// 25. WifiGuestMode
-		List<String> param15 = Collections.singletonList(VIAConnectProMonitoringMetric.PART_PRESET_CONFIRM_GET.getParam());
-		String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMonitoringMetric.PART_PRESET_CONFIRM_GET.getCommand(), param15, false);
-		String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
-		stats.put(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getName(), "");
-		controls.add(createSwitch(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getName(), Integer.parseInt(wifiGuestMode), VIAConnectProConstant.STOP, VIAConnectProConstant.START));
+		stats.put(String.format("%s#StartNewStream", VIAConnectProMetric.STREAMING_URL.getGroupName()), "");
+		controls.add(createButton(String.format("%s#StartNewStream", VIAConnectProMetric.STREAMING_URL.getGroupName()), VIAConnectProConstant.START, "Starting..."));
 	}
 
 	/**
@@ -486,7 +581,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 *
 	 * @param command Name of the command
 	 * @param params Params of the command. Example: <P1>{param 1}</P1> <P2>{param 2}</P2>
-	 * @param isControlCommand  Check if is control to throw the proper exception.
+	 * @param isControlCommand Check if is control to throw the proper exception.
 	 * @return String of raw response
 	 * @throws Exception When fail to send the telnet command.
 	 */
@@ -502,6 +597,13 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		}
 	}
 
+	/**
+	 * Build telnet request before sending it to the device
+	 *
+	 * @param command Name of the command
+	 * @param params List of params
+	 * @return String of built telnet request
+	 */
 	private String buildTelnetRequest(String command, List<String> params) {
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.append("<P>");
@@ -520,14 +622,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		return rawResponseArray[rawResponseArray.length - 1];
 	}
 
-	private void populateUsernameList(Map<String, String> stats, List<AdvancedControllableProperty> controls, String groupName, ParticipantListDTO participantListDTO, List<String> usernames) {
-		for (Map.Entry<String,String> entry : participantListDTO.getUserAndStatusMap().entrySet()) {
-			usernames.add(entry.getKey());
-		}
-		stats.put(String.format("%s#Username",groupName), "");
-		controls.add(createDropdown(String.format("%s#Username",groupName), usernames, usernames.get(0)));
-	}
-
 	/**
 	 * Check if there are any usernames in the username list.
 	 * And populate statistics and controls if valid.
@@ -538,18 +632,20 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @return boolean
 	 * @throws Exception When fail to get participant list
 	 */
-	private boolean isValidUsernameListAndPopulateList(Map<String, String> stats, List<AdvancedControllableProperty> controls, String groupName) throws Exception {
+	private boolean isValidUsernameListAndPopulateList(Map<String, String> stats, List<AdvancedControllableProperty> controls, String groupName, List<String> usernames) throws Exception {
 		ParticipantListDTO participantListDTO = getListParticipant();
 		if (participantListDTO.getUserAndStatusMap().size() == 0) {
-			stats.put(String.format("%s#Username",groupName), "Need at least 1 username.");
+			stats.put(String.format("%s#Username", groupName), "Need at least 1 username.");
 			return false;
 		}
-		List<String> usernames = new ArrayList<>();
-		populateUsernameList(stats, controls, groupName, participantListDTO, usernames);
+		for (Map.Entry<String, String> entry : participantListDTO.getUserAndStatusMap().entrySet()) {
+			usernames.add(entry.getKey());
+		}
+		stats.put(String.format("%s#Username", groupName), "");
+		controls.add(createDropdown(String.format("%s#Username", groupName), usernames, usernames.get(0)));
 		return true;
 	}
 
-	//region Create AdvancedControllableProperty instance
 	/**
 	 * Create switch
 	 *
