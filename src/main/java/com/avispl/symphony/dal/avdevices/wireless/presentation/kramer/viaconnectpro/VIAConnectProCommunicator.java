@@ -17,8 +17,11 @@ import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnect
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProMetric;
 import com.avispl.symphony.dal.communicator.TelnetCommunicator;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.*;
 
+import org.apache.commons.net.telnet.TelnetClient;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -77,14 +80,22 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 
 	private ExtendedStatistics localExtendedStatistics;
 
+	private TelnetClient myTelnet;
+
+	private boolean isLogin = false;
+
+	private boolean isLoginCommand = false;
+
 	/**
 	 * VIAConnectProCommunicator constructor
 	 */
 	public VIAConnectProCommunicator() {
+		this.setLoginPrompt("Username:");
+		this.setPasswordPrompt("Password:");
 		this.setCommandSuccessList(
-				Collections.singletonList("A"));
+				Arrays.asList("\r\n"));
 		this.setCommandErrorList(Collections.singletonList("A"));
-		this.setLoginSuccessList(Collections.singletonList(">"));
+		this.setLoginSuccessList(Arrays.asList("Login\r\nLogin Successful.\nNow Please send a command:\r\n"));
 	}
 
 
@@ -101,6 +112,68 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			controlProperty(controllableProperty);
 		}
 	}
+
+	@Override
+	protected String internalSend(String outputData) throws Exception {
+		if (!isLogin) {
+			this.myTelnet = new TelnetClient();
+			this.myTelnet.setConnectTimeout(this.timeout);
+			this.myTelnet.connect(this.host, this.port);
+		}
+		this.write(outputData);
+		if (isLoginCommand){
+			return this.read(null, this.myTelnet.getInputStream());
+		}
+		return this.read(outputData, this.myTelnet.getInputStream());
+	}
+
+	@Override
+	protected void write(String outputData) throws Exception {
+		OutputStream os = this.myTelnet.getOutputStream();
+		PrintStream printStream = new PrintStream(os);
+		if (!outputData.endsWith("\r\n")) {
+			if (outputData.endsWith("\r")) {
+				outputData = outputData + "\n";
+			} else if (outputData.endsWith("\n")) {
+				outputData = outputData.replace("\n", "\r\n");
+			} else {
+				outputData = outputData + "\r\n";
+			}
+		}
+
+		printStream.print(outputData);
+		printStream.flush();
+	}
+
+	@Override
+	protected void login() throws Exception {
+		isLoginCommand = true;
+		String isSuccess = this.internalSend(buildTelnetLogin());
+		isLoginCommand = false;
+		if (isSuccess.equals(this.loginSuccessList.get(0))) {
+			isLogin = true;
+
+		}
+	}
+
+	@Override
+	protected void destroyChannel() {
+		isLogin = false;
+		if (null != this.myTelnet) {
+			try {
+				if (this.myTelnet.isConnected()) {
+					this.myTelnet.disconnect();
+				}
+			} catch (Exception var2) {
+				if (this.logger.isWarnEnabled()) {
+					this.logger.warn("error seen on destroyChannel", var2);
+				}
+			}
+
+			this.myTelnet = null;
+		}
+	}
+
 
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
@@ -398,8 +471,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	}
 
 	private void populateWifiGuestMode(Map<String, String> stats, List<AdvancedControllableProperty> controls) throws Exception {
-		List<String> param11 = Collections.singletonList(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getParam());
-		String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMetric.PART_PRESET_CONFIRM_GET.getCommand(), param11, false);
+		List<String> param11 = Collections.singletonList(VIAConnectProMetric.WIFI_GUEST_MODE.getParam());
+		String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMetric.WIFI_GUEST_MODE.getCommand(), param11, false);
 		String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
 		stats.put(VIAConnectProMetric.WIFI_GUEST_MODE.getGroupName(), "");
 		controls.add(createSwitch(VIAConnectProMetric.WIFI_GUEST_MODE.getGroupName(), Integer.parseInt(wifiGuestMode), VIAConnectProConstant.STOP, VIAConnectProConstant.START));
@@ -586,8 +659,12 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @throws Exception When fail to send the telnet command.
 	 */
 	private String sendTelnetCommand(String command, List<String> params, boolean isControlCommand) throws Exception {
+		login();
 		try {
-			return this.send(buildTelnetRequest(command, params));
+			String response = this.internalSend(buildTelnetRequest(command, params));
+			response = response.replace("\r\n", "");
+			destroyChannel();
+			return response;
 		} catch (Exception exception) {
 			if (isControlCommand) {
 				throw new CommandFailureException(this.getAddress(), command, "Fail to send control command", exception);
@@ -617,10 +694,26 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		return String.valueOf(stringBuilder);
 	}
 
+
+
+	/**
+	 * Build telnet request before sending it to the device
+	 *
+	 */
+	private String buildTelnetLogin() {
+		return "<P>" +
+				String.format("<UN>%s</UN>", this.getLogin()) +
+				String.format("<Pwd>%s</Pwd>", this.getPassword()) +
+				String.format("<Cmd>%s</Cmd>", "Login") +
+				"</P>";
+	}
+
 	private String rawResponseHandling(String rawResponse) {
 		String[] rawResponseArray = rawResponse.split("\\|");
 		return rawResponseArray[rawResponseArray.length - 1];
 	}
+
+
 
 	/**
 	 * Check if there are any usernames in the username list.

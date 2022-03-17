@@ -117,7 +117,7 @@ public enum VIAConnectProMetric {
 	 * DND set or unset:
 	 * 	Set status: require 2 params Set and username
 	 */
-	DND_SET("DND ","DND","Set"),
+	DND_SET("DND","DND","Set"),
 
 	/**
 	 * Kick off user:
