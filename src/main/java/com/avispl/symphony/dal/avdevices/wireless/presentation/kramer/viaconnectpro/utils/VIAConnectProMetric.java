@@ -89,7 +89,7 @@ public enum VIAConnectProMetric {
 	 *  2. Set-PrsMode: 2 params (Set, {0/1} (off/on))
 	 */
 	PRESENTATION_MODE_STATUS_GET("PresentationModeStatus","PrsMode","Get"),
-	PRESENTATION_MODE_STATUS_SET("PresentationModeStatus","PrsMode","Set,1"),
+	PRESENTATION_MODE_STATUS_SET("PresentationModeStatus","PrsMode","Set,0"),
 
 	/**
 	 * Log mode status
@@ -108,28 +108,10 @@ public enum VIAConnectProMetric {
 	QUICK_CLIENT_ACCESS_STATUS_SET("QuickClientAccessStatus","QuickLaunch","Set,1"),
 
 	/**
-	 * User computer enable/disable control:
-	 * 	Set status: require 2 params {0/1} (disable/enable) and username
-	 */
-	USER_COMPUTER_CONTROL("UserComputer","Control","1"),
-
-	/**
-	 * DND set or unset:
-	 * 	Set status: require 2 params Set and username
-	 */
-	DND_SET("DND","DND","Set"),
-
-	/**
 	 * Kick off user:
 	 * 	Set status: require 1 param username
 	 */
 	KICK_OFF("KickOff","KickOff",""),
-
-	/**
-	 * Set screen share status:
-	 * 	Set status: require 2 params On/Off and username
-	 */
-	SCREEN_SHARE_STATUS_SET("ScreenShareStatus","ScreenShare",""),
 
 	/**
 	 * Gateway: serial number, mac address, version
@@ -192,18 +174,6 @@ public enum VIAConnectProMetric {
 	 * Streaming URL: require 2 params 1,  URL path
 	 */
 	STREAMING_URL("Streaming","StreamingURL","1"),
-
-	/**
-	 * WhiteBoard:
-	 * - On: 1 param On
-	 * - Off-autosave: 2 params Off, 1
-	 * - Off-discard: 2 params Off, 2
-	 * - Switch: 2 params Switch, 2/1 (Desktop mode/ WhiteBoard mode)
-	 */
-	WHITE_BOARD_ON("WhiteBoard","WhiteBoard","On"),
-	WHITE_BOARD_OFF_AUTOSAVE("WhiteBoard","WhiteBoard","Off,1"),
-	WHITE_BOARD_OFF_DISCARD("WhiteBoard","WhiteBoard","Off,2"),
-	WHITE_BOARD_SWITCH("WhiteBoard","WhiteBoard","Switch,2"),
 
 	/**
 	 * Part preset confirm
