@@ -73,7 +73,6 @@ public class VIAConnectProConstant {
 	public static final String NOT_PRESENTING = "NotPresenting";
 	public static final String PRESENTING = "Presenting";
 	public static final String WAITING_FOR_PERMISSION = "WaitingForPermission";
-	public static final String ERROR_14 = "Error14";
 	public static final String ERROR_1008 = "Error1008";
 	public static final String SSTART_SPECIAL_CASE = "SStart";
 	public static final String SSTOP_SPECIAL_CASE = "SStop";
