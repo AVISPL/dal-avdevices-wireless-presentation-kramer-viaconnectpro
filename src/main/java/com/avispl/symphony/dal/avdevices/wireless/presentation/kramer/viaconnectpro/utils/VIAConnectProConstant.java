@@ -80,4 +80,15 @@ public class VIAConnectProConstant {
 	public static final String SSTOP_SPECIAL_CASE = "SStop";
 	public static final String SRESTART_SPECIAL_CASE = "SRestart";
 	public static final String SCHANGE_SPECIAL_CASE = "SChange";
+	public static final String USR_NOT_EXIST = "UsrNotExist";
+	public static final String ZERO = "0";
+	public static final String MODERATOR = "Moderator";
+	public static final String ONE = "1";
+	public static final String UDP = "udp://";
+	public static final String RTSP = "rtsp://";
+	public static final String NO_URL_IS_BEING_STREAMED = "No URL is being streamed";
+	public static final String RECORDING_IS_ON = "Recording is ON";
+	public static final String STREAMING_IS_ON = "Streaming is ON";
+	public static final String NO_URL = "No URL";
+	public static final String ERROR_504 = "Error504";
 }
