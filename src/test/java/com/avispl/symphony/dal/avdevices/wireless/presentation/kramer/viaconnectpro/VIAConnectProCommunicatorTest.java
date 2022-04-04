@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro;
 
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
