@@ -59,7 +59,7 @@ public enum VIAConnectProControllingMetric {
 	STREAMING_URL("StreamingFromExternalToDevice", "StreamingURL", "1"),
 
 	/**
-	 * 2. Set-WifiGuestMode-Start/Stop: 0/1
+	 * Set-WifiGuestMode-Start/Stop: 0/1
 	 */
 	WIFI_GUEST_MODE_SET("DeviceSettings", "WifiGuestMode", "");
 

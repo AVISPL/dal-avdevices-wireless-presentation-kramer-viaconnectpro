@@ -43,19 +43,19 @@ public enum VIAConnectProMonitoringMetric {
 
 	/**
 	 * Part preset confirm
-	 * 1. Get-PartPresentConfirm: 1 param (Get)
+	 * Get-PartPresentConfirm: 1 param (Get)
 	 */
 	PART_PRESENT_CONFIRM_GET("DeviceSettings-Moderator", "PartPresentConfirm", "Get"),
 
 	/**
 	 * Log mode status
-	 * 1. Get-Log: 1 param (Get)
+	 * Get-Log: 1 param (Get)
 	 */
 	ACTIVE_SYSTEM_LOG_GET("DeviceSettings", "Log", "Get"),
 
 	/**
 	 * Quick client access status
-	 * 1. Get-QuickLaunch: 1 param (Get)
+	 * Get-QuickLaunch: 1 param (Get)
 	 */
 	QUICK_CLIENT_ACCESS_GET("DeviceSettings", "QuickLaunch", "Get"),
 
@@ -68,16 +68,20 @@ public enum VIAConnectProMonitoringMetric {
 
 	/**
 	 * Chrome connectivity status and api mode status
-	 * 1. Get-Chrome : 1 param (Get)
-	 * 2. Get-APIMode: 1 param (Get)
+	 * <ol>
+	 *  	<li>Get-Chrome : 1 param (Get)</li>
+	 * 	 	<li>Get-APIMode: 1 param (Get)</li>
+	 * </ol>
 	 */
 	CHROME_JOIN_THROUGH_BROWSER_GET("DeviceSettings", "Chrome", "Get"),
 	CHROME_API_MODE_GET("DeviceSettings", "APIMode", "Get"),
 
 	/**
 	 * Room overlay status
-	 * 1. Get-RoomOverlay: 1 param (Get)
-	 * 2. Set-RoomOverlay: 3 param (Set,  0/1 (off/on) room overlay, 0/1 (off/on) auto hide time)
+	 * <ol>
+	 *   <li>Get-RoomOverlay: 1 param (Get)</li>
+	 * 	 <li>Set-RoomOverlay: 3 param (Set,  0/1 (off/on) room overlay, 0/1 (off/on) auto hide time)</li>
+	 * </ol>
 	 */
 	ROOM_OVERLAY_STATUS_GET("DeviceSettings-RoomOverlay", "RoomOverlay", "Get"),
 
@@ -88,16 +92,18 @@ public enum VIAConnectProMonitoringMetric {
 
 	/**
 	 * Streaming status
-	 * 1. Get-Streaming: 1 param (Get)
-	 * 2. Get-Streaming-SStatus: 1 param (SStatus)
+	 * <ol>
+	 *   <li>Get-Streaming: 1 param (Get)</li>
+	 *   <li>Get-Streaming-SStatus: 1 param (SStatus)</li>
+	 * </ol>
 	 */
 	STREAMING_STATUS_GET("StreamingFromDeviceToExternal", "Streaming", "Get"),
 	STREAMING_STATUS_SSTATUS_GET("StreamingFromDeviceToExternal", "Streaming", "SStatus"),
 
 	/**
 	 * Wi-Fi Guest Mode
-	 * 1. Get-Status: 1 param (Status)
-	 * 3. Set-WifiGuestMode-Status: 1 param Status
+	 * <li>Get-Status: 1 param (Status)/li>
+	 * <li>Set-WifiGuestMode-Status: 1 param Status<</li>
 	 */
 	WIFI_GUEST_MODE("DeviceSettings", "WifiGuestMode", "Status"),
 	WIFI_GUEST_MODE_STATUS("DeviceSettings", "WifiGuestMode", "Status"),

@@ -13,6 +13,7 @@ import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.dto.ParticipantListDTO;
+import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.DisplayStatusModeEnum;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProConstant;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProControllingMetric;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProMonitoringMetric;
@@ -21,6 +22,7 @@ import com.avispl.symphony.dal.util.StringUtils;
 
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.springframework.util.CollectionUtils;
 
@@ -54,7 +56,7 @@ import org.springframework.util.CollectionUtils;
  * 	<li>Set Chrome Status</li>
  * 	<li>Streaming(start/stop/restart/change)</li>
  * 	<li>StreamingURL: open network stream</li>
- * 	<li>Wifi Guest Mode</li> TODO: Thieu
+ * 	<li>Wifi Guest Mode</li> TODO: Leave it out for now.
  * 	</ol>
  *
  * @author Kevin / Symphony Dev Team<br>
@@ -63,6 +65,9 @@ import org.springframework.util.CollectionUtils;
  */
 public class VIAConnectProCommunicator extends TelnetCommunicator implements Monitorable, Controller {
 
+	/**
+	 * Store previous/current ExtendedStatistics
+	 */
 	private ExtendedStatistics localExtendedStatistics;
 
 	/**
@@ -187,28 +192,10 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			String propertyName = property.substring(property.indexOf(VIAConnectProConstant.HASH) + 1);
 			switch (groupName) {
 				case VIAConnectProConstant.DEVICE_SETTINGS:
-					switch (propertyName) {
-						case VIAConnectProConstant.VOLUME:
-							normalControlProperties(VIAConnectProControllingMetric.VOLUME_SET, propertyName, propertyValue);
-							break;
-						case VIAConnectProConstant.AUDIO_OUTPUT:
-							break;
-						default:
-							//
-					}
+					deviceSettingsControl(propertyValue, propertyName);
 					break;
 				case VIAConnectProConstant.PARTICIPANT_LIST:
-					switch (propertyName) {
-						case VIAConnectProConstant.USERNAME:
-							cachedControlProperties(VIAConnectProControllingMetric.DISPLAY_STATUS_SET, propertyName, propertyValue, property, groupName);
-							break;
-						case VIAConnectProConstant.USER_PRESENTATION:
-						case VIAConnectProConstant.KICK_OFF:
-							normalControlProperties(VIAConnectProControllingMetric.DISPLAY_STATUS_SET, propertyName, propertyValue);
-							break;
-						default:
-							//
-					}
+					participantListControl(property, propertyValue, groupName, propertyName);
 					break;
 				case VIAConnectProConstant.STREAMING_FROM_EXTERNAL_TO_DEVICE:
 						cachedControlProperties(VIAConnectProControllingMetric.STREAMING_URL, propertyName, propertyValue, property, groupName);
@@ -235,280 +222,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	}
 
 	/**
-	 * controlProperty for cached case - require more than one value then send the command to the device.
-	 *
-	 * @param viaConnectProControllingMetric control metric
-	 * @param propertyName property name
-	 * @param propertyValue property value
-	 * @param property group name and property name (GrName#PropName)
-	 * @param groupName group name
-	 */
-	private void cachedControlProperties(VIAConnectProControllingMetric viaConnectProControllingMetric, String propertyName, String propertyValue, String property, String groupName) {
-		isCachedControlling = true;
-		if (localExtendedStatistics == null || cachedLocalExtendedStatistics == null) {
-			return;
-		}
-		Map<String, String> cachedStats = cachedLocalExtendedStatistics.getStatistics();
-		List<AdvancedControllableProperty> cachedControls = cachedLocalExtendedStatistics.getControllableProperties();
-
-		Map<String, String> localStats = localExtendedStatistics.getStatistics();
-		List<AdvancedControllableProperty> localControls = localExtendedStatistics.getControllableProperties();
-		List<String> param = new ArrayList<>();
-
-		switch (viaConnectProControllingMetric) {
-			case DISPLAY_STATUS_SET:
-				if (VIAConnectProConstant.USERNAME.equals(propertyName)) {
-					updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
-					String userName1 = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USERNAME));
-					param.add(VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getParam());
-					param.add(userName1);
-					String rawResponse = sendTelnetCommand(VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getCommand(), param, false);
-					String[] splitRawResponse = rawResponse.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-					String currentUserDisplayStatus = splitRawResponse[2];
-					if (!currentUserDisplayStatus.equals(VIAConnectProConstant.NOT_PRESENTING) && !currentUserDisplayStatus.equals(VIAConnectProConstant.PRESENTING) && !currentUserDisplayStatus.equals("Waiting")) {
-						throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getCommand(),
-								String.format("Fail to set display status of username: %s", userName1));
-					}
-					cachedStats.put(String.format("%s#%s", VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getGroupName(), VIAConnectProConstant.USER_DISPLAY_STATUS), splitRawResponse[2]);
-					if (VIAConnectProConstant.PRESENTING.equals(currentUserDisplayStatus)) {
-						updateLatestPropertyValue(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.STOP, cachedStats, cachedControls, localControls);
-					} else {
-						updateLatestPropertyValue(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.START, cachedStats, cachedControls, localControls);
-					}
-				} else {
-					throw new IllegalArgumentException("Unexpected value: " + propertyName);
-				}
-				break;
-			case STREAMING_START:
-				isStreamingControl = true;
-				switch (propertyName) {
-					case VIAConnectProConstant.ACTION:
-						switch (propertyValue) {
-							case VIAConnectProConstant.START:
-							case VIAConnectProConstant.STOP:
-							case VIAConnectProConstant.RESTART:
-							case VIAConnectProConstant.CHANGE:
-								updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
-								break;
-							default:
-								throw new IllegalArgumentException("Unexpected value: " + propertyName);
-						}
-						break;
-					case VIAConnectProConstant.USERNAME:
-					case VIAConnectProConstant.URL:
-					case VIAConnectProConstant.URL_1:
-					case VIAConnectProConstant.URL_2:
-					case VIAConnectProConstant.NEW_URL:
-					case VIAConnectProConstant.NEW_URL_1:
-					case VIAConnectProConstant.NEW_URL_2:
-						updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
-						break;
-					default:
-						throw new IllegalArgumentException("Unexpected value: " + propertyName);
-				}
-				break;
-			case STREAMING_URL:
-				switch (propertyName) {
-					case VIAConnectProConstant.EXTERNAL_STREAM_URL:
-						updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
-						break;
-					case VIAConnectProConstant.START_STREAMING:
-						String newStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.NEW_STREAM_URL));
-						param.add(VIAConnectProControllingMetric.STREAMING_URL.getParam());
-						param.add(newStreamURL);
-						String rawNewStream = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_URL.getCommand(), param, true);
-						String[] splitRawNewStream = rawNewStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-						if (splitRawNewStream[splitRawNewStream.length - 1].equals("Error504")) {
-							logger.error("VIAConnectProCommunicator: Stream already start");
-							// Cannot get status of streamingURL so suppress this error.
-							break;
-						}
-						if (!("1").equals(splitRawNewStream[splitRawNewStream.length - 1])) {
-							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_URL.getCommand(),
-									String.format("Fail to start new stream with URL: %s", newStreamURL));
-						}
-
-						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
-						break;
-					case VIAConnectProConstant.STOP_STREAMING:
-						String stopStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.NEW_STREAM_URL));
-						param.add("0");
-						param.add(stopStreamURL);
-						String rawStopStream = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_URL.getCommand(), param, true);
-						String[] splitRawStopStream = rawStopStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-						if (splitRawStopStream[splitRawStopStream.length - 1].equals("Error504")) {
-							logger.error("VIAConnectProCommunicator: Stream already stop");
-							// Cannot get status of streamingURL so suppress this error.
-							break;
-						}
-						if (!("1").equals(splitRawStopStream[splitRawStopStream.length - 1])) {
-							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_URL.getCommand(),
-									String.format("Fail to stop stream with URL: %s", stopStreamURL));
-						}
-						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
-						break;
-					default:
-						//
-				}
-				break;
-			default:
-				//
-		}
-	}
-
-	/**
-	 * controlProperty for normal case - require only one value then send the command to the device.
-	 *
-	 * @param viaConnectProMetric Control metric
-	 * @param propertyName property name
-	 * @param propertyValue value of that property
-	 */
-	private void normalControlProperties(VIAConnectProControllingMetric viaConnectProMetric, String propertyName, String propertyValue) {
-		switch (viaConnectProMetric) {
-			case VOLUME_SET:
-				List<String> volumeParams = new ArrayList<>();
-				volumeParams.add(VIAConnectProControllingMetric.VOLUME_SET.getParam());
-				float floatVolume = Float.parseFloat(propertyValue);
-				int intVolume = (int) floatVolume;
-				String stringVolume = String.valueOf(intVolume);
-				volumeParams.add(stringVolume); // param must have type integer.
-				String rawVolumeSet = sendTelnetCommand(VIAConnectProControllingMetric.VOLUME_SET.getCommand(), volumeParams, true);
-				String[] rawVolumeSetResponse = rawVolumeSet.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-				String volumeResponse = rawVolumeSetResponse[2];
-				if (!volumeResponse.equals(stringVolume)) {
-					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.VOLUME_SET.getCommand(),
-							String.format("Fail to set volume to %s", propertyValue));
-				}
-				break;
-			case DISPLAY_STATUS_SET:
-				String groupName = VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getGroupName();
-				if (localExtendedStatistics == null || cachedLocalExtendedStatistics == null ) {
-					break;
-				}
-				Map<String, String> localStats = localExtendedStatistics.getStatistics();
-				Map<String, String> cachedStats = localExtendedStatistics.getStatistics();
-				List<AdvancedControllableProperty> cachedControls = localExtendedStatistics.getControllableProperties();
-				List<String> displayStatusParams = new ArrayList<>();
-				switch (propertyName) {
-					case VIAConnectProConstant.USER_PRESENTATION:
-
-						String userName = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USERNAME));
-						String currentButtonLabel = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION));
-						String displayStatusMode;
-						if (currentButtonLabel.equals(VIAConnectProConstant.START)) {
-							displayStatusMode = "1";
-						} else if (currentButtonLabel.equals(VIAConnectProConstant.STOP)) {
-							displayStatusMode = "0";
-						} else {
-							displayStatusMode = "2";
-						}
-						displayStatusParams.add(VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getParam());
-						displayStatusParams.add(userName);
-						displayStatusParams.add(displayStatusMode);
-						String rawApplyDisplayStatus = sendTelnetCommand(VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getCommand(), displayStatusParams, true);
-						String applyDisplayStatus = rawResponseHandling(rawApplyDisplayStatus);
-						if ("UsrNotExist".equals(applyDisplayStatus)) {
-							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getCommand(),
-									String.format("User %s is not exist/online at the moment.", userName));
-						}
-						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
-						break;
-					case VIAConnectProConstant.KICK_OFF:
-						String kickUserName = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USERNAME));
-						displayStatusParams = new ArrayList<>();
-						displayStatusParams.add(kickUserName);
-						String rawKickOffUser = sendTelnetCommand(VIAConnectProControllingMetric.KICK_OFF.getCommand(), displayStatusParams, true);
-						String[] splitRawKickOffUser = rawKickOffUser.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-						if (!"1".equals(splitRawKickOffUser[1])) {
-							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.KICK_OFF.getCommand(),
-									String.format("Fail to kick user: %s", kickUserName));
-						}
-						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
-						break;
-					default:
-						//
-				}
-				break;
-			case STREAMING_STATUS_SET:
-				Map<String, String> localStats1 = localExtendedStatistics.getStatistics();
-				Map<String, String> cachedStats1 = localExtendedStatistics.getStatistics();
-				List<AdvancedControllableProperty> cachedControls1 = localExtendedStatistics.getControllableProperties();
-				List<String> streamingStatusSetParams = new ArrayList<>();
-				streamingStatusSetParams.add(VIAConnectProControllingMetric.STREAMING_STATUS_SET.getParam());
-				streamingStatusSetParams.add(propertyValue);
-				if (!isDualDisplayStreaming()) {
-					String currentURL = localStats1.get(String.format("%s#%s", VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName(), VIAConnectProConstant.URL));
-					streamingStatusSetParams.add(currentURL);
-				} else {
-					String urlOne = localStats1.get(String.format("%s#%s", VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName(), VIAConnectProConstant.URL_1));
-					String urlTwo = localStats1.get(String.format("%s#%s", VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName(), VIAConnectProConstant.URL_2));
-					streamingStatusSetParams.add(urlOne);
-					streamingStatusSetParams.add(urlTwo);
-				}
-				String rawSetStreamingMode = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_STATUS_SET.getCommand(), streamingStatusSetParams, true);
-				String[] splitRawSetStreamingMode = rawSetStreamingMode.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-				if (!"1".equals(splitRawSetStreamingMode[splitRawSetStreamingMode.length - 1])) {
-					String errorStatus = propertyValue.equals("1") ? VIAConnectProConstant.ACTIVATE : VIAConnectProConstant.DEACTIVATE;
-					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_STATUS_SET.getCommand(),
-							String.format("Fail to %s streaming mode", errorStatus));
-				}
-				removeCachedStatisticAndControl(cachedStats1, cachedControls1, VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName());
-				break;
-			case STREAMING_START:
-				String streamGroupName = VIAConnectProControllingMetric.STREAMING_START.getGroupName();
-				Map<String, String> localStats2 = localExtendedStatistics.getStatistics();
-				Map<String, String> cachedStats2 = localExtendedStatistics.getStatistics();
-				List<AdvancedControllableProperty> cachedControls2 = localExtendedStatistics.getControllableProperties();
-				String currentAction = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.ACTION));
-				String userName = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.USERNAME));
-				List<String> param = new ArrayList<>();
-				if (currentAction.equals(VIAConnectProConstant.START) || currentAction.equals(VIAConnectProConstant.STOP)) {
-					String command = currentAction.equals(VIAConnectProConstant.START) ? VIAConnectProControllingMetric.STREAMING_START.getCommand() : VIAConnectProControllingMetric.STREAMING_STOP.getCommand();
-					String firstParam = currentAction.equals(VIAConnectProConstant.START) ? VIAConnectProControllingMetric.STREAMING_START.getParam() : VIAConnectProControllingMetric.STREAMING_STOP.getParam();
-					param.add(firstParam);
-					param.add(userName);
-					String rawStartOrStopStream = sendTelnetCommand(command, param, true);
-					String[] splitRawStartOrStopStream = rawStartOrStopStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-					if (!"1".equals(splitRawStartOrStopStream[1])) {
-						throw new CommandFailureException(this.getAddress(), command,
-								String.format("Fail to %s the stream for username: %s", currentAction, userName));
-					}
-				} else {
-					String command = currentAction.equals(VIAConnectProConstant.RESTART) ? VIAConnectProControllingMetric.STREAMING_RESTART.getCommand() : VIAConnectProControllingMetric.STREAMING_CHANGE.getCommand();
-					String firstParam = currentAction.equals(VIAConnectProConstant.RESTART) ? VIAConnectProControllingMetric.STREAMING_RESTART.getParam() : VIAConnectProControllingMetric.STREAMING_CHANGE.getParam();
-
-					param.add(firstParam);
-					param.add(userName);
-
-					if (isDualDisplayStreaming()) {
-						String urlName1 = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL_1));
-						String urlName2 = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL_2));
-						param.add(urlName1);
-						param.add(urlName2);
-					} else {
-						String urlName = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL));
-						param.add(urlName);
-					}
-
-					if (isDualDisplayStreaming()) {
-						String urlName2 = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL_2));
-						param.add(urlName2);
-					}
-					String rawRestartOrChangeStream = sendTelnetCommand(command, param, true);
-					String[] splitRawRestartOrChangeStream = rawRestartOrChangeStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-					if (!"1".equals(splitRawRestartOrChangeStream[2])) {
-						throw new CommandFailureException(this.getAddress(), command,
-								String.format("Fail to %s the stream for username: %s", currentAction, userName));
-					}
-				}
-				removeCachedStatisticAndControl(cachedStats2, cachedControls2, streamGroupName);
-				break;
-			default:
-				throw new IllegalArgumentException("Unexpected value: " + propertyName);
-		}
-	}
-
-	/**
 	 * {@inheritDoc}
 	 */
 	@Override
@@ -529,25 +242,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		List<String> param = new ArrayList<>();
 		this.write(buildTelnetRequest(VIAConnectProControllingMetric.LOGIN.getCommand(), param, true));
 		super.login();
-	}
-
-	/**
-	 * Check if the adapter is login successfully by sending a command to the device
-	 * Command to be sent: Get-Volume
-	 *
-	 * @return boolean is login or not.
-	 */
-	private boolean isLogin() throws Exception {
-		if(!isChannelConnected()){
-			createChannel();
-		}
-		String response = this.internalSend(buildTelnetRequest(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false));
-		boolean isLoginSuccess = response.endsWith(VIAConnectProConstant.END_COMMAND);
-
-		if(!isLoginSuccess){
-			logger.error("VIAConnectProCommunicator: Telnet connection to " + host + " cannot be established");
-		}
-		return isLoginSuccess;
 	}
 
 	@Override
@@ -657,9 +351,11 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		}
 		Map<String, String> userNameAndStatusMap = new HashMap<>();
 		for (String usernameAndStatus : usernamesAndStatus) {
-			String username = usernameAndStatus.split(VIAConnectProConstant.UNDER_SCORE)[0];
-			String status = usernameAndStatus.split(VIAConnectProConstant.UNDER_SCORE)[1];
-			userNameAndStatusMap.put(username, status);
+			if (usernameAndStatus.contains(VIAConnectProConstant.UNDER_SCORE)) {
+				String username = usernameAndStatus.split(VIAConnectProConstant.UNDER_SCORE)[0];
+				String status = usernameAndStatus.split(VIAConnectProConstant.UNDER_SCORE)[1];
+				userNameAndStatusMap.put(username, status);
+			}
 		}
 
 		participantListDTO.setUserAndStatusMap(userNameAndStatusMap);
@@ -716,19 +412,19 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.ACTIVE_SYSTEM_LOG_GET.getParam());
 		String rawLogModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ACTIVE_SYSTEM_LOG_GET.getCommand(), param, false);
 		String logModeStatus = rawResponseHandling(rawLogModeStatus);
-		String logModeString = "0".equals(logModeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
+		String logModeString = VIAConnectProConstant.ZERO.equals(logModeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.ACTIVATE_SYSTEM_LOG), logModeString);
 		// Chrome join through browser
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.CHROME_JOIN_THROUGH_BROWSER_GET.getParam());
 		String rawChromeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.CHROME_JOIN_THROUGH_BROWSER_GET.getCommand(), param, false);
 		String chromeStatus = rawResponseHandling(rawChromeStatus);
-		String chromeStatusString = "0".equals(chromeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
+		String chromeStatusString = VIAConnectProConstant.ZERO.equals(chromeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.JOIN_THROUGH_BROWSER), chromeStatusString);
 		// Chrome API Mode
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getParam());
 		String rawChromeAPIModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getCommand(), param, false);
 		String chromeAPIModeStatus = rawResponseHandling(rawChromeAPIModeStatus);
-		String chromeAPIModeStatusString = "0".equals(chromeAPIModeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
+		String chromeAPIModeStatusString = VIAConnectProConstant.ZERO.equals(chromeAPIModeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.API_SETTINGS_COMMAND), chromeAPIModeStatusString);
 		// Chrome Audio devices
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.AUDIO_DEVICES_GET.getParam());
@@ -742,7 +438,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getParam());
 		String rawQuickClientAccessStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getCommand(), param, false);
 		String quickClientAccessStatusInt = rawResponseHandling(rawQuickClientAccessStatus);
-		String quickClientAccessStatus = quickClientAccessStatusInt.equals("1") ? VIAConnectProConstant.ENABLE : VIAConnectProConstant.DISABLE;
+
+		String quickClientAccessStatus = VIAConnectProConstant.ONE.equals(quickClientAccessStatusInt) ? VIAConnectProConstant.ENABLE : VIAConnectProConstant.DISABLE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.QUICK_CLIENT_ACCESS), quickClientAccessStatus);
 		// Volume
 		String rawVolume = sendTelnetCommand(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false);
@@ -766,13 +463,13 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.MODERATOR_MODE_STATUS_GET.getParam());
 		String rawPresentationModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.MODERATOR_MODE_STATUS_GET.getCommand(), param, false);
 		String presentationModeStatus = rawResponseHandling(rawPresentationModeStatus);
-		String presentationModeStatusString = "0".equals(presentationModeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
+		String presentationModeStatusString = VIAConnectProConstant.ZERO.equals(presentationModeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.STATUS), presentationModeStatusString);
 		// Moderator-ParticipantPresentConfirm
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getParam());
 		String rawPartPresentConfirm = sendTelnetCommand(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getCommand(), param, false);
 		String partPresentConfirm = rawResponseHandling(rawPartPresentConfirm);
-		String partPresentConfirmString = "0".equals(partPresentConfirm) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
+		String partPresentConfirmString = VIAConnectProConstant.ZERO.equals(partPresentConfirm) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
 		if (partPresentConfirm.equals(VIAConnectProConstant.ERROR_1008)) {
 			return;
 		}
@@ -793,9 +490,9 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String rawRoomOverlayStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getCommand(), param, false);
 		String[] roomOverlayResponse = rawRoomOverlayStatus.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 		String roomOverlayStatus = roomOverlayResponse[2];
-		String roomOverlayStatusString = "0".equals(roomOverlayStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
+		String roomOverlayStatusString = VIAConnectProConstant.ZERO.equals(roomOverlayStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.STATUS), roomOverlayStatusString);
-		if ("1".equals(roomOverlayStatus)) {
+		if (VIAConnectProConstant.ONE.equals(roomOverlayStatus)) {
 			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUTO_HIDE_TIME), roomOverlayResponse[3]);
 		}
 	}
@@ -817,9 +514,9 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		for (Map.Entry<String, String> entry : participantListDTO.getUserAndStatusMap().entrySet()) {
 			statistics.put(String.format("%s#%s%s", groupName, VIAConnectProConstant.PARTICIPANT, (i + 1)), entry.getKey());
 			String plistStatus;
-			if (entry.getValue().equals("0")) {
+			if (VIAConnectProConstant.ZERO.equals(entry.getValue())) {
 				plistStatus = VIAConnectProConstant.NOT_PRESENTING;
-			} else if (entry.getValue().equals("1")) {
+			} else if (VIAConnectProConstant.ONE.equals(entry.getValue())) {
 				plistStatus = VIAConnectProConstant.PRESENTING;
 			} else {
 				plistStatus = VIAConnectProConstant.WAITING_FOR_PERMISSION;
@@ -837,11 +534,11 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_DISPLAY_STATUS), displayStatus);
 		if (isModerator()) {
 			if (VIAConnectProConstant.PRESENTING.equals(displayStatus)) {
-				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.STOP);
-				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.STOP, "Stopping presentation..."));
+				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName());
+				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName(), "Stopping presentation..."));
 			} else {
-				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.START);
-				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.START, "Starting presentation..."));
+				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName());
+				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName(), "Starting presentation..."));
 			}
 		}
 		// Kick user:
@@ -876,9 +573,9 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		controls.add(createSwitch(String.format("%s#%s", groupName, VIAConnectProConstant.STREAMING_MODE), Integer.parseInt(streamingStatus),
 				VIAConnectProConstant.DEACTIVATE,
 				VIAConnectProConstant.ACTIVATE));
-		if ("0".equals(streamingStatus)) {
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.URL), "udp://172.31.254.209:8554");
-			controls.add(createText(String.format("%s#%s", groupName, VIAConnectProConstant.URL), "udp://172.31.254.209:8554"));
+		if (VIAConnectProConstant.ZERO.equals(streamingStatus)) {
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.URL), VIAConnectProConstant.UDP);
+			controls.add(createText(String.format("%s#%s", groupName, VIAConnectProConstant.URL), VIAConnectProConstant.UDP));
 			return;
 		}
 		populateStreamingFromDeviceToExternalStatus(statistics, groupName, streamingGetResponse);
@@ -909,20 +606,20 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String statusValue;
 		switch (intStreamingGetResponse) {
 			case 0:
-				statusValue = "No URL is being streamed";
+				statusValue = VIAConnectProConstant.NO_URL_IS_BEING_STREAMED;
 				break;
 			case 1:
-				statusValue = "Recording is ON";
+				statusValue = VIAConnectProConstant.RECORDING_IS_ON;
 				break;
 			case 6:
-				statusValue = "Streaming is ON";
+				statusValue = VIAConnectProConstant.STREAMING_IS_ON;
 				break;
 			default:
 				statusValue = VIAConnectProConstant.EMPTY;
 		}
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.STATUS), statusValue);
-		if ("0".equals(streamingGetResponse[2])) {
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.URL), "No URL");
+		if (VIAConnectProConstant.ZERO.equals(streamingGetResponse[2])) {
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.URL), VIAConnectProConstant.NO_URL);
 		} else {
 			if (streamingGetResponse.length == 4) {
 				// Single display
@@ -943,8 +640,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 */
 	private void populateStreamingFromExternalToDevice(Map<String, String> stats, List<AdvancedControllableProperty> controls) {
 		String groupName = VIAConnectProControllingMetric.STREAMING_URL.getGroupName();
-		stats.put(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL), "rtsp://172.31.15.64:8554/viastream");
-		controls.add(createText(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL), "rtsp://172.31.15.64:8554/viastream"));
+		stats.put(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL), VIAConnectProConstant.RTSP);
+		controls.add(createText(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL), VIAConnectProConstant.RTSP));
 
 		stats.put(String.format("%s#%s", groupName, VIAConnectProConstant.START_STREAMING), VIAConnectProConstant.EMPTY);
 		controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.START_STREAMING), VIAConnectProConstant.START, "Starting..."));
@@ -978,7 +675,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			String response = this.internalSend(buildTelnetRequest(command, params, false));
 			String inputCommand = command;
 			// Handle special cases
-			if (inputCommand.equals("Streaming") && isControlCommand) {
+			if (inputCommand.equals(VIAConnectProControllingMetric.STREAMING_START.getCommand()) && isControlCommand) {
 				if (params.get(0).equals(VIAConnectProControllingMetric.STREAMING_START.getParam())) {
 					inputCommand = VIAConnectProConstant.SSTART_SPECIAL_CASE;
 				} else if (params.get(0).equals(VIAConnectProControllingMetric.STREAMING_STOP.getParam())) {
@@ -1027,6 +724,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 
 	/**
 	 * Build telnet request before sending it to the device
+	 * Example request: <P><UN>su</UN><Pwd>supass</Pwd><Cmd>Login</Cmd></P>
 	 *
 	 * @param command Name of the command
 	 * @param params List of params
@@ -1156,14 +854,17 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param cachedControls List of cached AdvancedControllableProperty
 	 */
 	private void populateCachedControlProperties(List<AdvancedControllableProperty> currentControls, List<AdvancedControllableProperty> cachedControls) {
-		for (AdvancedControllableProperty currentControl : currentControls) {
-			for (AdvancedControllableProperty cachedControl : cachedControls) {
-				if (currentControl.getName().equals(cachedControl.getName())) {
-					currentControl.setValue(cachedControl.getValue());
-					break;
+		if (cachedControls.size() == 0) {
+			return;
+		}
+		Map<String, Object> nameToValue = cachedControls.stream()
+				.collect(Collectors.toMap(AdvancedControllableProperty::getName, AdvancedControllableProperty::getValue));
+			for (AdvancedControllableProperty currentControl : currentControls) {
+				Object currentCachedControlValue = nameToValue.get(currentControl.getName());
+				if (currentCachedControlValue != null) {
+					currentControl.setValue(currentCachedControlValue);
 				}
 			}
-		}
 	}
 
 	/**
@@ -1211,6 +912,324 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	}
 
 	/**
+	 * Control Property: Participant List
+	 *
+	 * @param property String of Property
+	 * @param propertyValue Property value
+	 * @param groupName Group name
+	 * @param propertyName Property name
+	 */
+	private void participantListControl(String property, String propertyValue, String groupName, String propertyName) {
+		switch (propertyName) {
+			case VIAConnectProConstant.USERNAME:
+				cachedControlProperties(VIAConnectProControllingMetric.DISPLAY_STATUS_SET, propertyName, propertyValue, property, groupName);
+				break;
+			case VIAConnectProConstant.USER_PRESENTATION:
+			case VIAConnectProConstant.KICK_OFF:
+				normalControlProperties(VIAConnectProControllingMetric.DISPLAY_STATUS_SET, propertyName, propertyValue);
+				break;
+			default:
+				throw new IllegalArgumentException("Unexpected value: " + propertyName);
+		}
+	}
+
+	/**
+	 * Control Property: DeviceSettings
+	 *
+	 * @param propertyValue Value of property
+	 * @param propertyName Name of the property
+	 */
+	private void deviceSettingsControl(String propertyValue, String propertyName) {
+		switch (propertyName) {
+			case VIAConnectProConstant.VOLUME:
+				normalControlProperties(VIAConnectProControllingMetric.VOLUME_SET, propertyName, propertyValue);
+				break;
+			case VIAConnectProConstant.AUDIO_OUTPUT:
+				break;
+			default:
+				throw new IllegalArgumentException("Unexpected value: " + propertyName);
+		}
+	}
+
+	/**
+	 * controlProperty for cached case - require more than one value then send the command to the device.
+	 *
+	 * @param viaConnectProControllingMetric control metric
+	 * @param propertyName property name
+	 * @param propertyValue property value
+	 * @param property group name and property name (GrName#PropName)
+	 * @param groupName group name
+	 */
+	private void cachedControlProperties(VIAConnectProControllingMetric viaConnectProControllingMetric, String propertyName, String propertyValue, String property, String groupName) {
+		isCachedControlling = true;
+		if (localExtendedStatistics == null || cachedLocalExtendedStatistics == null) {
+			return;
+		}
+		Map<String, String> cachedStats = cachedLocalExtendedStatistics.getStatistics();
+		List<AdvancedControllableProperty> cachedControls = cachedLocalExtendedStatistics.getControllableProperties();
+
+		Map<String, String> localStats = localExtendedStatistics.getStatistics();
+		List<AdvancedControllableProperty> localControls = localExtendedStatistics.getControllableProperties();
+		List<String> param = new ArrayList<>();
+
+		switch (viaConnectProControllingMetric) {
+			case DISPLAY_STATUS_SET:
+				if (VIAConnectProConstant.USERNAME.equals(propertyName)) {
+					updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
+					String userName1 = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USERNAME));
+					param.add(VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getParam());
+					param.add(userName1);
+					String rawResponse = sendTelnetCommand(VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getCommand(), param, false);
+					String[] splitRawResponse = rawResponse.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+					String currentUserDisplayStatus = splitRawResponse[2];
+					if (!currentUserDisplayStatus.equals(VIAConnectProConstant.NOT_PRESENTING) && !currentUserDisplayStatus.equals(VIAConnectProConstant.PRESENTING) && !currentUserDisplayStatus.equals("Waiting")) {
+						throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getCommand(),
+								String.format("Fail to set display status of username: %s", userName1));
+					}
+					cachedStats.put(String.format("%s#%s", VIAConnectProMonitoringMetric.DISPLAY_STATUS_GET.getGroupName(), VIAConnectProConstant.USER_DISPLAY_STATUS), splitRawResponse[2]);
+					if (VIAConnectProConstant.PRESENTING.equals(currentUserDisplayStatus)) {
+						updateLatestPropertyValue(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.STOP, cachedStats, cachedControls, localControls);
+					} else {
+						updateLatestPropertyValue(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), VIAConnectProConstant.START, cachedStats, cachedControls, localControls);
+					}
+				} else {
+					throw new IllegalArgumentException("Unexpected value: " + propertyName);
+				}
+				break;
+			case STREAMING_START:
+				isStreamingControl = true;
+				switch (propertyName) {
+					case VIAConnectProConstant.ACTION:
+						switch (propertyValue) {
+							case VIAConnectProConstant.START:
+							case VIAConnectProConstant.STOP:
+							case VIAConnectProConstant.RESTART:
+							case VIAConnectProConstant.CHANGE:
+								updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
+								break;
+							default:
+								throw new IllegalArgumentException("Unexpected value: " + propertyName);
+						}
+						break;
+					case VIAConnectProConstant.USERNAME:
+					case VIAConnectProConstant.URL:
+					case VIAConnectProConstant.URL_1:
+					case VIAConnectProConstant.URL_2:
+					case VIAConnectProConstant.NEW_URL:
+					case VIAConnectProConstant.NEW_URL_1:
+					case VIAConnectProConstant.NEW_URL_2:
+						updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
+						break;
+					default:
+						throw new IllegalArgumentException("Unexpected value: " + propertyName);
+				}
+				break;
+			case STREAMING_URL:
+				switch (propertyName) {
+					case VIAConnectProConstant.EXTERNAL_STREAM_URL:
+						updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
+						break;
+					case VIAConnectProConstant.START_STREAMING:
+						String newStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.NEW_STREAM_URL));
+						param.add(VIAConnectProControllingMetric.STREAMING_URL.getParam());
+						param.add(newStreamURL);
+						String rawNewStream = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_URL.getCommand(), param, true);
+						String[] splitRawNewStream = rawNewStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+						if (splitRawNewStream[splitRawNewStream.length - 1].equals(VIAConnectProConstant.ERROR_504)) {
+							logger.error("VIAConnectProCommunicator: Stream already start");
+							// Cannot get status of streamingURL so suppress this error.
+							break;
+						}
+						// Example response: : StreamingURL|1|1. 1 is start streaming successfully.
+						if (!VIAConnectProConstant.ONE.equals(splitRawNewStream[splitRawNewStream.length - 1])) {
+							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_URL.getCommand(),
+									String.format("Fail to start new stream with URL: %s", newStreamURL));
+						}
+						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
+						break;
+					case VIAConnectProConstant.STOP_STREAMING:
+						String stopStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.NEW_STREAM_URL));
+						param.add(VIAConnectProConstant.ZERO);
+						param.add(stopStreamURL);
+						String rawStopStream = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_URL.getCommand(), param, true);
+						String[] splitRawStopStream = rawStopStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+						if (splitRawStopStream[splitRawStopStream.length - 1].equals(VIAConnectProConstant.ERROR_504)) {
+							logger.error("VIAConnectProCommunicator: Stream already stop");
+							// Cannot get status of streamingURL so suppress this error.
+							break;
+						}
+						// Example response: : StreamingURL|0|1. 1 is stop streaming successfully.
+						if (!VIAConnectProConstant.ONE.equals(splitRawStopStream[splitRawStopStream.length - 1])) {
+							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_URL.getCommand(),
+									String.format("Fail to stop stream with URL: %s", stopStreamURL));
+						}
+						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
+						break;
+					default:
+						throw new IllegalArgumentException("Unexpected value: " + propertyName);
+				}
+				break;
+			default:
+				throw new IllegalArgumentException("Unexpected value: " + propertyName);
+		}
+	}
+
+	/**
+	 * controlProperty for normal case - require only one value then send the command to the device.
+	 *
+	 * @param viaConnectProMetric Control metric
+	 * @param propertyName property name
+	 * @param propertyValue value of that property
+	 */
+	private void normalControlProperties(VIAConnectProControllingMetric viaConnectProMetric, String propertyName, String propertyValue) {
+		switch (viaConnectProMetric) {
+			case VOLUME_SET:
+				List<String> volumeParams = new ArrayList<>();
+				volumeParams.add(VIAConnectProControllingMetric.VOLUME_SET.getParam());
+				String stringVolume = String.valueOf(Float.valueOf(propertyValue).intValue());
+				volumeParams.add(stringVolume); // param must have type integer.
+				String rawVolumeSet = sendTelnetCommand(VIAConnectProControllingMetric.VOLUME_SET.getCommand(), volumeParams, true);
+				String[] rawVolumeSetResponse = rawVolumeSet.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+				// Expect response is Vol|Get|<value of Volume>|0
+				String volumeResponse = rawVolumeSetResponse[2];
+				if (!volumeResponse.equals(stringVolume)) {
+					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.VOLUME_SET.getCommand(),
+							String.format("Fail to set volume to %s", propertyValue));
+				}
+				break;
+			case DISPLAY_STATUS_SET:
+				String groupName = VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getGroupName();
+				if (localExtendedStatistics == null || cachedLocalExtendedStatistics == null ) {
+					break;
+				}
+				Map<String, String> localStats = localExtendedStatistics.getStatistics();
+				Map<String, String> cachedStats = localExtendedStatistics.getStatistics();
+				List<AdvancedControllableProperty> cachedControls = localExtendedStatistics.getControllableProperties();
+				List<String> displayStatusParams = new ArrayList<>();
+				switch (propertyName) {
+					case VIAConnectProConstant.USER_PRESENTATION:
+
+						String userName = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USERNAME));
+						String currentButtonLabel = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION));
+						String displayStatusMode;
+						if (currentButtonLabel.equals(DisplayStatusModeEnum.START.getName())) {
+							displayStatusMode = DisplayStatusModeEnum.START.getCode();
+						} else if (currentButtonLabel.equals(DisplayStatusModeEnum.STOP.getName())) {
+							displayStatusMode = DisplayStatusModeEnum.START.getCode();
+						} else {
+							displayStatusMode = DisplayStatusModeEnum.DENY.getCode();
+						}
+						displayStatusParams.add(VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getParam());
+						displayStatusParams.add(userName);
+						displayStatusParams.add(displayStatusMode);
+						String rawApplyDisplayStatus = sendTelnetCommand(VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getCommand(), displayStatusParams, true);
+						String applyDisplayStatus = rawResponseHandling(rawApplyDisplayStatus);
+						if (VIAConnectProConstant.USR_NOT_EXIST.equals(applyDisplayStatus)) {
+							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getCommand(),
+									String.format("User %s is not exist/online at the moment.", userName));
+						}
+						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
+						break;
+					case VIAConnectProConstant.KICK_OFF:
+						String kickUserName = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USERNAME));
+						displayStatusParams = new ArrayList<>();
+						displayStatusParams.add(kickUserName);
+						String rawKickOffUser = sendTelnetCommand(VIAConnectProControllingMetric.KICK_OFF.getCommand(), displayStatusParams, true);
+						String[] splitRawKickOffUser = rawKickOffUser.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+						// Example response: KickOff|0/1|<username>. 0 is fail, 1 is success
+						if (!VIAConnectProConstant.ONE.equals(splitRawKickOffUser[1])) {
+							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.KICK_OFF.getCommand(),
+									String.format("Fail to kick user: %s", kickUserName));
+						}
+						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
+						break;
+					default:
+						throw new IllegalArgumentException("Unexpected value: " + propertyName);
+				}
+				break;
+			case STREAMING_STATUS_SET:
+				Map<String, String> localStats1 = localExtendedStatistics.getStatistics();
+				Map<String, String> cachedStats1 = localExtendedStatistics.getStatistics();
+				List<AdvancedControllableProperty> cachedControls1 = localExtendedStatistics.getControllableProperties();
+				List<String> streamingStatusSetParams = new ArrayList<>();
+				streamingStatusSetParams.add(VIAConnectProControllingMetric.STREAMING_STATUS_SET.getParam());
+				streamingStatusSetParams.add(propertyValue);
+				if (!isDualDisplayStreaming()) {
+					String currentURL = localStats1.get(String.format("%s#%s", VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName(), VIAConnectProConstant.URL));
+					streamingStatusSetParams.add(currentURL);
+				} else {
+					String urlOne = localStats1.get(String.format("%s#%s", VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName(), VIAConnectProConstant.URL_1));
+					String urlTwo = localStats1.get(String.format("%s#%s", VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName(), VIAConnectProConstant.URL_2));
+					streamingStatusSetParams.add(urlOne);
+					streamingStatusSetParams.add(urlTwo);
+				}
+				String rawSetStreamingMode = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_STATUS_SET.getCommand(), streamingStatusSetParams, true);
+				String[] splitRawSetStreamingMode = rawSetStreamingMode.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+				// Example response: Streaming|Set|P2|0/1. 0 is fail, 1 is success
+				if (!VIAConnectProConstant.ONE.equals(splitRawSetStreamingMode[splitRawSetStreamingMode.length - 1])) {
+					String errorStatus = propertyValue.equals(VIAConnectProConstant.ONE) ? VIAConnectProConstant.ACTIVATE : VIAConnectProConstant.DEACTIVATE;
+					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_STATUS_SET.getCommand(),
+							String.format("Fail to %s streaming mode", errorStatus));
+				}
+				removeCachedStatisticAndControl(cachedStats1, cachedControls1, VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName());
+				break;
+			case STREAMING_START:
+				String streamGroupName = VIAConnectProControllingMetric.STREAMING_START.getGroupName();
+				Map<String, String> localStats2 = localExtendedStatistics.getStatistics();
+				Map<String, String> cachedStats2 = localExtendedStatistics.getStatistics();
+				List<AdvancedControllableProperty> cachedControls2 = localExtendedStatistics.getControllableProperties();
+				String currentAction = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.ACTION));
+				String userName = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.USERNAME));
+				List<String> param = new ArrayList<>();
+				if (currentAction.equals(VIAConnectProConstant.START) || currentAction.equals(VIAConnectProConstant.STOP)) {
+					String command = currentAction.equals(VIAConnectProConstant.START) ? VIAConnectProControllingMetric.STREAMING_START.getCommand() : VIAConnectProControllingMetric.STREAMING_STOP.getCommand();
+					String firstParam = currentAction.equals(VIAConnectProConstant.START) ? VIAConnectProControllingMetric.STREAMING_START.getParam() : VIAConnectProControllingMetric.STREAMING_STOP.getParam();
+					param.add(firstParam);
+					param.add(userName);
+					String rawStartOrStopStream = sendTelnetCommand(command, param, true);
+					String[] splitRawStartOrStopStream = rawStartOrStopStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+					// Example response: SStart/SStop|0/1|ID. 0 is fail, 1 is success
+					if (!VIAConnectProConstant.ONE.equals(splitRawStartOrStopStream[1])) {
+						throw new CommandFailureException(this.getAddress(), command,
+								String.format("Fail to %s the stream for username: %s", currentAction, userName));
+					}
+				} else {
+					String command = currentAction.equals(VIAConnectProConstant.RESTART) ? VIAConnectProControllingMetric.STREAMING_RESTART.getCommand() : VIAConnectProControllingMetric.STREAMING_CHANGE.getCommand();
+					String firstParam = currentAction.equals(VIAConnectProConstant.RESTART) ? VIAConnectProControllingMetric.STREAMING_RESTART.getParam() : VIAConnectProControllingMetric.STREAMING_CHANGE.getParam();
+
+					param.add(firstParam);
+					param.add(userName);
+
+					if (isDualDisplayStreaming()) {
+						String urlName1 = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL_1));
+						String urlName2 = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL_2));
+						param.add(urlName1);
+						param.add(urlName2);
+					} else {
+						String urlName = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL));
+						param.add(urlName);
+					}
+
+					if (isDualDisplayStreaming()) {
+						String urlName2 = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL_2));
+						param.add(urlName2);
+					}
+					String rawRestartOrChangeStream = sendTelnetCommand(command, param, true);
+					String[] splitRawRestartOrChangeStream = rawRestartOrChangeStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+					// Example response: Streaming|SRestart/SChange|0/1. 0 is fail, 1 is success
+					if (!VIAConnectProConstant.ONE.equals(splitRawRestartOrChangeStream[2])) {
+						throw new CommandFailureException(this.getAddress(), command,
+								String.format("Fail to %s the stream for username: %s", currentAction, userName));
+					}
+				}
+				removeCachedStatisticAndControl(cachedStats2, cachedControls2, streamGroupName);
+				break;
+			default:
+				throw new IllegalArgumentException("Unexpected value: " + propertyName);
+		}
+	}
+
+	/**
 	 * Check if userRole is moderator, if it is invalid string => treat as moderator
 	 *
 	 * @return boolean value.
@@ -1220,7 +1239,26 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		if (StringUtils.isNullOrEmpty(this.getUserRole())) {
 			return false;
 		} else
-			return this.getUserRole().trim().equals("Moderator");
+			return this.getUserRole().trim().equals(VIAConnectProConstant.MODERATOR);
+	}
+
+	/**
+	 * Check if the adapter is login successfully by sending a command to the device
+	 * Command to be sent: Get-Volume
+	 *
+	 * @return boolean is login or not.
+	 */
+	private boolean isLogin() throws Exception {
+		if(!isChannelConnected()){
+			createChannel();
+		}
+		String response = this.internalSend(buildTelnetRequest(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false));
+		boolean isLoginSuccess = response.endsWith(VIAConnectProConstant.END_COMMAND);
+
+		if(!isLoginSuccess){
+			logger.error("VIAConnectProCommunicator: Telnet connection to " + host + " cannot be established");
+		}
+		return isLoginSuccess;
 	}
 
 	/**
