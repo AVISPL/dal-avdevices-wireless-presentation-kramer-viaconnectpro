@@ -106,7 +106,6 @@ public enum VIAConnectProMonitoringMetric {
 	 * <li>Set-WifiGuestMode-Status: 1 param Status<</li>
 	 */
 	WIFI_GUEST_MODE("DeviceSettings", "WifiGuestMode", "Status"),
-	WIFI_GUEST_MODE_STATUS("DeviceSettings", "WifiGuestMode", "Status"),
 
 	ROOM_CODE("","RCode","Get,Code");
 

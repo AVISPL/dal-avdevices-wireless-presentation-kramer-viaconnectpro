@@ -56,7 +56,6 @@ public class VIAConnectProConstant {
 	public static final String URL = "URL";
 	public static final String URL_1 = "URL1";
 	public static final String URL_2 = "URL2";
-	public static final String NEW_STREAM_URL = "NewStreamURL";
 	public static final String START_STREAMING = "StartStreaming";
 	public static final String STOP_STREAMING = "StopStreaming";
 	public static final String END_COMMAND = "\r\n";
@@ -91,4 +90,8 @@ public class VIAConnectProConstant {
 	public static final String STREAMING_IS_ON = "Streaming is ON";
 	public static final String NO_URL = "No URL";
 	public static final String ERROR_504 = "Error504";
+	public static final String ERROR_20057 = "Error20057";
+	public static final String NONE = "None";
+	public static final String WIFI_GUEST_MODE = "WifiGuestMode";
+	public static final String ERROR = "Error";
 }
