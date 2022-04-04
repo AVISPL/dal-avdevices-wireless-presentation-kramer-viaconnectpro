@@ -16,6 +16,7 @@ import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnect
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.DisplayStatusModeEnum;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProConstant;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProControllingMetric;
+import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProErrorMetric;
 import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnectpro.utils.VIAConnectProMonitoringMetric;
 import com.avispl.symphony.dal.communicator.TelnetCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -50,13 +51,12 @@ import org.springframework.util.CollectionUtils;
  * <p>
  * Controlling:
  * <ol>
- * 	<li>Set Display Status</li>
  * 	<li>Set Volume</li>
  * 	<li>Kick off user</li>
- * 	<li>Set Chrome Status</li>
+ * 	<li>Start/Stop UserPresentation</li>
  * 	<li>Streaming(start/stop/restart/change)</li>
  * 	<li>StreamingURL: open network stream</li>
- * 	<li>Wifi Guest Mode</li> TODO: Leave it out for now.
+ * 	<li>Wifi Guest Mode</li>.
  * 	</ol>
  *
  * @author Kevin / Symphony Dev Team<br>
@@ -337,7 +337,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String rawUserNames = sendTelnetCommand(VIAConnectProMonitoringMetric.PLIST_All_STATUS.getCommand(), param2, false);
 		String[] rawUsernameAndStatus = rawUserNames.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 		String rawResponse = rawUsernameAndStatus[rawUsernameAndStatus.length - 1];
-		if (rawResponse.equals(VIAConnectProConstant.ERROR_14)) {
+		if (rawResponse.equals(VIAConnectProErrorMetric.ERROR_14.getErrorCode())) {
 			participantListDTO.setLoggedInUsers(0);
 			participantListDTO.setUserAndStatusMap(new HashMap<>());
 			return participantListDTO;
@@ -378,23 +378,44 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		statistics.put(VIAConnectProConstant.HOST_NAME, ipInformation[4].split(VIAConnectProConstant.COLON)[1]);
 		// Room code
 		String rawRoomCode = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_CODE.getCommand(), Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE.getParam().split(VIAConnectProConstant.COMMA)), false);
-		String roomCode = rawResponseHandling(rawRoomCode);
-		statistics.put(VIAConnectProConstant.ROOM_CODE, roomCode);
+		if (rawRoomCode.contains(VIAConnectProErrorMetric.ERROR_21.getErrorCode())) {
+			statistics.put(VIAConnectProConstant.ROOM_CODE, VIAConnectProConstant.NONE);
+			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_21.getErrorCode(), VIAConnectProErrorMetric.ERROR_21.getErrorDescription()));
+		} else {
+			String roomCode = rawResponseHandling(rawRoomCode);
+			statistics.put(VIAConnectProConstant.ROOM_CODE, roomCode);
+		}
+
 		// Version
 		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.VERSION_GET.getParam());
 		String rawGatewayVersion = sendTelnetCommand(VIAConnectProMonitoringMetric.VERSION_GET.getCommand(), param, false);
-		String gatewayVersion = rawResponseHandling(rawGatewayVersion);
-		statistics.put(VIAConnectProConstant.VERSION, gatewayVersion);
+		if (rawGatewayVersion.contains(VIAConnectProErrorMetric.ERROR_703.getErrorCode())) {
+			statistics.put(VIAConnectProConstant.VERSION, VIAConnectProConstant.NONE);
+			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_703.getErrorCode(), VIAConnectProErrorMetric.ERROR_703.getErrorDescription()));
+		} else {
+			String gatewayVersion = rawResponseHandling(rawGatewayVersion);
+			statistics.put(VIAConnectProConstant.VERSION, gatewayVersion);
+		}
 		// MacAddress
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.MAC_ADDRESS_GET.getParam());
 		String rawGatewayMacAddress = sendTelnetCommand(VIAConnectProMonitoringMetric.MAC_ADDRESS_GET.getCommand(), param, false);
-		String gatewayMacAddress = rawResponseHandling(rawGatewayMacAddress);
-		statistics.put(VIAConnectProConstant.MAC_ADDRESS, gatewayMacAddress);
+		if (rawGatewayMacAddress.contains(VIAConnectProErrorMetric.ERROR_702.getErrorCode())) {
+			statistics.put(VIAConnectProConstant.MAC_ADDRESS, VIAConnectProConstant.NONE);
+			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_702.getErrorCode(), VIAConnectProErrorMetric.ERROR_702.getErrorDescription()));
+		} else {
+			String gatewayMacAddress = rawResponseHandling(rawGatewayMacAddress);
+			statistics.put(VIAConnectProConstant.MAC_ADDRESS, gatewayMacAddress);
+		}
 		// Serial number
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.SERIAL_NUMBER_GET.getParam());
 		String rawGatewaySerialNumber = sendTelnetCommand(VIAConnectProMonitoringMetric.SERIAL_NUMBER_GET.getCommand(), param, false);
-		String gatewaySerialNumber = rawResponseHandling(rawGatewaySerialNumber);
-		statistics.put(VIAConnectProConstant.SERIAL_NUMBER, gatewaySerialNumber);
+		if (rawGatewaySerialNumber.contains(VIAConnectProErrorMetric.ERROR_701.getErrorCode())) {
+			statistics.put(VIAConnectProConstant.SERIAL_NUMBER, VIAConnectProConstant.NONE);
+			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_701.getErrorCode(), VIAConnectProErrorMetric.ERROR_701.getErrorDescription()));
+		} else {
+			String gatewaySerialNumber = rawResponseHandling(rawGatewaySerialNumber);
+			statistics.put(VIAConnectProConstant.SERIAL_NUMBER, gatewaySerialNumber);
+		}
 	}
 
 	/**
@@ -426,14 +447,19 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String chromeAPIModeStatus = rawResponseHandling(rawChromeAPIModeStatus);
 		String chromeAPIModeStatusString = VIAConnectProConstant.ZERO.equals(chromeAPIModeStatus) ? VIAConnectProConstant.DISABLE : VIAConnectProConstant.ENABLE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.API_SETTINGS_COMMAND), chromeAPIModeStatusString);
-		// Chrome Audio devices
+		// Audio devices
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.AUDIO_DEVICES_GET.getParam());
 		String rawAudioDevices = sendTelnetCommand(VIAConnectProMonitoringMetric.AUDIO_DEVICES_GET.getCommand(), param, false);
-		String[] audioDevicesWithActiveDevice = rawAudioDevices.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-		String currentActiveDevice = audioDevicesWithActiveDevice[audioDevicesWithActiveDevice.length - 1];
-		String[] audioDevices = audioDevicesWithActiveDevice[audioDevicesWithActiveDevice.length - 2].split(VIAConnectProConstant.HASH);
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), currentActiveDevice);
-		controls.add(createDropdown(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), Arrays.asList(audioDevices), currentActiveDevice));
+		if (rawAudioDevices.contains(VIAConnectProErrorMetric.ERROR_704.getErrorCode())) {
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), VIAConnectProConstant.NONE);
+			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_704.getErrorCode(), VIAConnectProErrorMetric.ERROR_704.getErrorDescription()));
+		} else {
+			String[] audioDevicesWithActiveDevice = rawAudioDevices.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+			String currentActiveDevice = audioDevicesWithActiveDevice[audioDevicesWithActiveDevice.length - 1];
+			String[] audioDevices = audioDevicesWithActiveDevice[audioDevicesWithActiveDevice.length - 2].split(VIAConnectProConstant.HASH);
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), currentActiveDevice);
+			controls.add(createDropdown(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), Arrays.asList(audioDevices), currentActiveDevice));
+		}
 		// Quick client access
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getParam());
 		String rawQuickClientAccessStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getCommand(), param, false);
@@ -447,6 +473,18 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String volume = splitVolume[2];
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), volume);
 		controls.add(createSlider(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), "0%", "100%", 0f, 100f, Float.valueOf(volume)));
+		// Wifi guest mode
+		String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getParam()), false);
+		String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
+		if (wifiGuestMode.equals(VIAConnectProConstant.ERROR_20057)) {
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), VIAConnectProConstant.NONE);
+			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_20057.getErrorCode(), VIAConnectProErrorMetric.ERROR_20057.getErrorDescription()));
+		} else {
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), wifiGuestMode);
+			controls.add(createSwitch(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), Integer.parseInt(wifiGuestMode),
+					VIAConnectProConstant.STOP,
+					VIAConnectProConstant.START));
+		}
 	}
 
 	/**
@@ -944,6 +982,9 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			case VIAConnectProConstant.VOLUME:
 				normalControlProperties(VIAConnectProControllingMetric.VOLUME_SET, propertyName, propertyValue);
 				break;
+			case VIAConnectProConstant.WIFI_GUEST_MODE:
+				normalControlProperties(VIAConnectProControllingMetric.WIFI_GUEST_MODE_SET, propertyName, propertyValue);
+				break;
 			case VIAConnectProConstant.AUDIO_OUTPUT:
 				break;
 			default:
@@ -1030,7 +1071,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 						updateLatestPropertyValue(property, propertyValue, cachedStats, cachedControls, localControls);
 						break;
 					case VIAConnectProConstant.START_STREAMING:
-						String newStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.NEW_STREAM_URL));
+						String newStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL));
 						param.add(VIAConnectProControllingMetric.STREAMING_URL.getParam());
 						param.add(newStreamURL);
 						String rawNewStream = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_URL.getCommand(), param, true);
@@ -1048,7 +1089,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
 						break;
 					case VIAConnectProConstant.STOP_STREAMING:
-						String stopStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.NEW_STREAM_URL));
+						String stopStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL));
 						param.add(VIAConnectProConstant.ZERO);
 						param.add(stopStreamURL);
 						String rawStopStream = sendTelnetCommand(VIAConnectProControllingMetric.STREAMING_URL.getCommand(), param, true);
@@ -1095,6 +1136,18 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				if (!volumeResponse.equals(stringVolume)) {
 					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.VOLUME_SET.getCommand(),
 							String.format("Fail to set volume to %s", propertyValue));
+				}
+				break;
+			case WIFI_GUEST_MODE_SET:
+				List<String> wifiGuestModeParams = new ArrayList<>();
+				wifiGuestModeParams.add(propertyValue);
+				String rawWifiGuestModeSet = sendTelnetCommand(VIAConnectProControllingMetric.WIFI_GUEST_MODE_SET.getCommand(), wifiGuestModeParams, true);
+				String[] rawWifiGuestModeSetResponse = rawWifiGuestModeSet.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+				// Expect response is WifiGuestMode|0/1 Stop/Start|0/1. 1 is set successfully, 0 is fail to set.
+				String wifiGuestModeSetResponse = rawWifiGuestModeSetResponse[rawWifiGuestModeSetResponse.length - 1];
+				if (!VIAConnectProConstant.ONE.equals(wifiGuestModeSetResponse)) {
+					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.WIFI_GUEST_MODE_SET.getCommand(),
+							String.format("Fail to set wifi guest mode status to %s", propertyValue));
 				}
 				break;
 			case DISPLAY_STATUS_SET:
@@ -1190,8 +1243,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 					String[] splitRawStartOrStopStream = rawStartOrStopStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 					// Example response: SStart/SStop|0/1|ID. 0 is fail, 1 is success
 					if (!VIAConnectProConstant.ONE.equals(splitRawStartOrStopStream[1])) {
-						throw new CommandFailureException(this.getAddress(), command,
-								String.format("Fail to %s the stream for username: %s", currentAction, userName));
+						populateErrorMessageForStreaming(currentAction, userName, command, rawStartOrStopStream, splitRawStartOrStopStream);
 					}
 				} else {
 					String command = currentAction.equals(VIAConnectProConstant.RESTART) ? VIAConnectProControllingMetric.STREAMING_RESTART.getCommand() : VIAConnectProControllingMetric.STREAMING_CHANGE.getCommand();
@@ -1218,8 +1270,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 					String[] splitRawRestartOrChangeStream = rawRestartOrChangeStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 					// Example response: Streaming|SRestart/SChange|0/1. 0 is fail, 1 is success
 					if (!VIAConnectProConstant.ONE.equals(splitRawRestartOrChangeStream[2])) {
-						throw new CommandFailureException(this.getAddress(), command,
-								String.format("Fail to %s the stream for username: %s", currentAction, userName));
+						populateErrorMessageForStreaming(currentAction, userName, command, rawRestartOrChangeStream, splitRawRestartOrChangeStream);
+						return;
 					}
 				}
 				removeCachedStatisticAndControl(cachedStats2, cachedControls2, streamGroupName);
@@ -1227,6 +1279,27 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + propertyName);
 		}
+	}
+
+	/**
+	 * Populate error message for StreamingControl
+	 *
+	 * @param currentAction Start/Stop/Change/Restart the stream
+	 * @param userName username
+	 * @param command  Start/Stop/Change/Restart the stream command
+	 * @param rawResponse Raw response
+	 * @param splitResponse Split response
+	 */
+	private void populateErrorMessageForStreaming(String currentAction, String userName, String command, String rawResponse, String[] splitResponse) {
+		String errorMessage = String.format("Fail to %s the stream for username: %s.", currentAction, userName);
+		if (rawResponse.contains(VIAConnectProConstant.ERROR)) {
+			VIAConnectProErrorMetric viaConnectProErrorMetric = VIAConnectProErrorMetric.getByCode(splitResponse[splitResponse.length - 1]);
+			if (viaConnectProErrorMetric != null) {
+				errorMessage += String.format("Error code: %s, description: %s", viaConnectProErrorMetric.getErrorCode(), viaConnectProErrorMetric.getErrorDescription());
+			}
+		}
+		throw new CommandFailureException(this.getAddress(), command,
+				errorMessage);
 	}
 
 	/**
