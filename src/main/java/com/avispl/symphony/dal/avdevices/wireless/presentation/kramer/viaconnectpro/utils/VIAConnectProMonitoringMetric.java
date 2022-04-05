@@ -23,7 +23,7 @@ public enum VIAConnectProMonitoringMetric {
 	/**
 	 * Display status: Get-require 2 params (Get and Username)
 	 */
-	DISPLAY_STATUS_GET("ParticipantList", "DisplayStatus", "Get"),
+	DISPLAY_STATUS_GET("UserModeration", "DisplayStatus", "Get"),
 
 	/**
 	 * Volume: Get-require 2 params (Vol and Get)

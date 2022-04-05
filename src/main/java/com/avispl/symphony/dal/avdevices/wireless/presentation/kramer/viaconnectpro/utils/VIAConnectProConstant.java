@@ -13,10 +13,10 @@ package com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnec
  */
 public class VIAConnectProConstant {
 
-	public static final String USERNAME = "Username";
+	public static final String USER = "User";
 	public static final String APPLY = "Apply";
 	public static final String USER_PRESENTATION = "UserPresentation";
-	public static final String KICK_OFF = "KickOff";
+	public static final String USER_KICK_OFF = "UserKickOff";
 	public static final String ACTION = "Action";
 	public static final String START = "Start";
 	public static final String STOP = "Stop";
@@ -24,8 +24,8 @@ public class VIAConnectProConstant {
 	public static final String CHANGE = "Change";
 	public static final String REGEX_VERTICAL_LINE = "\\|";
 	public static final String STATUS = "Status";
-	public static final String ENABLE = "Enable";
-	public static final String DISABLE = "Disable";
+	public static final String ENABLED = "Enabled";
+	public static final String DISABLED = "Disabled";
 	public static final String NEW_URL = "NewURL";
 	public static final String NEW_URL_1 = "NewURL1";
 	public static final String NEW_URL_2 = "NewURL2";
@@ -93,4 +93,8 @@ public class VIAConnectProConstant {
 	public static final String NONE = "None";
 	public static final String WIFI_GUEST_MODE = "WifiGuestMode";
 	public static final String ERROR = "Error";
+	public static final String DISABLE = "Disable";
+	public static final String ENABLE = "Enable";
+	public static final String USER_MODERATION = "UserModeration";
+	public static final String WAITING = "Waiting";
 }

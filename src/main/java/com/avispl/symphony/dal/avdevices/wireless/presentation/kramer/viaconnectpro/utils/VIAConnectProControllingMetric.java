@@ -21,7 +21,7 @@ public enum VIAConnectProControllingMetric {
 	/**
 	 * Display status: Set-require 2 params (Set and username)
 	 */
-	DISPLAY_STATUS_SET("ParticipantList", "DisplayStatus", "Set"),
+	DISPLAY_STATUS_SET("UserModeration", "DisplayStatus", "Set"),
 
 	/**
 	 * Kick off user:
