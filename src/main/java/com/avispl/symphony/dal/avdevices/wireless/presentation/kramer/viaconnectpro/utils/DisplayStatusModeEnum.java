@@ -14,8 +14,7 @@ package com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnec
 public enum DisplayStatusModeEnum {
 
 	START("Start", "1"),
-	STOP("Stop", "0"),
-	DENY("Deny", "2");
+	STOP("Stop", "0");
 
 	/**
 	 * DisplayStatusModeEnum with arguments constructor

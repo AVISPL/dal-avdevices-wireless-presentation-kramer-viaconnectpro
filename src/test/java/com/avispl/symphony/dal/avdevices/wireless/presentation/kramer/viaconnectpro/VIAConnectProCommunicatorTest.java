@@ -166,7 +166,7 @@ class VIAConnectProCommunicatorTest {
     void testNoUserLogin() throws Exception {
         ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
         Map<String, String> stats = extendedStatistics.getStatistics();
-        Assertions.assertEquals("No one is logged in.",stats.get(String.format("%s#%s", VIAConnectProConstant.PARTICIPANT_LIST, VIAConnectProConstant.USERNAME)));
+        Assertions.assertEquals("No one is logged in.",stats.get(String.format("%s#%s", VIAConnectProConstant.PARTICIPANT_LIST, VIAConnectProConstant.USER)));
     }
 
     /**
