@@ -28,17 +28,15 @@ public enum VIAConnectProErrorMetric {
 	/**
 	 * Streaming error responses:
 	 */
-	ERROR_20053("Error20062","Path does not begin with udp or tcp (Single display)"),
-	ERROR_20054("Error20063","Empty P3 or P4 values when dual display is set."),
-	ERROR_20055("Error20065","Path Length incorrect"),
-	ERROR_20058("Error20066","Path does not begin with udp or tcp (Dual display)"),
-	ERROR_20059("Error20062","Path does not begin with udp or tcp (Single display)"),
-	ERROR_20060("Error20063","Empty P3 or P4 values when dual display is set."),
-	ERROR_20061("Error20065","Path Length incorrect"),
-	ERROR_20062("Error20066","Path does not begin with udp or tcp (Dual display)"),
-	ERROR_20063("Error20066","Path does not begin with udp or tcp (Dual display)"),
-	ERROR_20065("Error20062","Path does not begin with udp or tcp (Single display)"),
-	ERROR_20066("Error20063","Empty P3 or P4 values when dual display is set.");
+	ERROR_20055("Error20055","Blank or Wrong URLs"),
+	ERROR_20058("Error20058", "Streaming is started"),
+	ERROR_20059("Error20059", "Empty P2 value"),
+	ERROR_20060("Error20060", "Empty P3 value when P2 is 1."),
+	ERROR_20061("Error20061", "Wrong P2 value"),
+	ERROR_20062("Error20062","Path does not begin with udp or tcp (Single display)"),
+	ERROR_20063("Error20063","Empty P3 or P4 values when dual display is set."),
+	ERROR_20065("Error20065","Path Length incorrect"),
+	ERROR_20066("Error20066","Path does not begin with udp or tcp (Dual display)");
 
 	VIAConnectProErrorMetric(String errorCode, String errorDescription) {
 		this.errorCode = errorCode;
