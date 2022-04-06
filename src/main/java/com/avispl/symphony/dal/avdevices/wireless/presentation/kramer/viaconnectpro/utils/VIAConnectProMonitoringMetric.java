@@ -39,13 +39,13 @@ public enum VIAConnectProMonitoringMetric {
 	 * Presentation mode
 	 * 1. Get-PrsMode: 1 param (Get)
 	 */
-	MODERATOR_MODE_STATUS_GET("DeviceSettings-Moderator", "PrsMode", "Get"),
+	MODERATOR_MODE_STATUS_GET("DeviceSettingsModeratorMode", "PrsMode", "Get"),
 
 	/**
 	 * Part preset confirm
 	 * Get-PartPresentConfirm: 1 param (Get)
 	 */
-	PART_PRESENT_CONFIRM_GET("DeviceSettings-Moderator", "PartPresentConfirm", "Get"),
+	PART_PRESENT_CONFIRM_GET("DeviceSettingsModeratorMode", "PartPresentConfirm", "Get"),
 
 	/**
 	 * Log mode status
@@ -83,12 +83,9 @@ public enum VIAConnectProMonitoringMetric {
 	 * 	 <li>Set-RoomOverlay: 3 param (Set,  0/1 (off/on) room overlay, 0/1 (off/on) auto hide time)</li>
 	 * </ol>
 	 */
-	ROOM_OVERLAY_STATUS_GET("DeviceSettings-RoomOverlay", "RoomOverlay", "Get"),
+	ROOM_OVERLAY_STATUS_GET("DeviceSettingsRoomOverlay", "RoomOverlay", "Get"),
 
-	/**
-	 * Audio devices
-	 */
-	AUDIO_DEVICES_GET("DeviceSettings", "GetAudioDevice", ""), // Number of devices ?
+	// Number of devices ?
 
 	/**
 	 * Streaming status

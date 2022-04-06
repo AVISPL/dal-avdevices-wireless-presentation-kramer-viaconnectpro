@@ -44,7 +44,6 @@ import org.springframework.util.CollectionUtils;
  * 	<li>Gateway Version</li>
  * 	<li>Chrome Status</li>
  * 	<li>Room Overlay Status</li>
- * 	<li>Audio Devices</li>
  * 	<li>Streaming</li>
  * 	<li>Part Present Confirm</li>
  * </ol>
@@ -112,24 +111,24 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * Adapter property: role of a user -
 	 *  Adapter will base on this role to display/hide statistics for a specific role.
 	 */
-	private String userRole;
+	private String configManagement;
 
 	/**
-	 * Retrieves {@code {@link #userRole}}
+	 * Retrieves {@code {@link #configManagement }}
 	 *
-	 * @return value of {@link #userRole}
+	 * @return value of {@link #configManagement}
 	 */
-	public String getUserRole() {
-		return userRole;
+	public String getConfigManagement() {
+		return configManagement;
 	}
 
 	/**
-	 * Sets {@code userRole}
+	 * Sets {@code configManagement}
 	 *
-	 * @param userRole the {@code java.lang.String} field
+	 * @param configManagement the {@code java.lang.String} field
 	 */
-	public void setUserRole(String userRole) {
-		this.userRole = userRole;
+	public void setConfigManagement(String configManagement) {
+		this.configManagement = configManagement;
 	}
 
 	/**
@@ -295,8 +294,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 					removeCachedStatisticAndControl(cachedStats, cachedControls, VIAConnectProMonitoringMetric.PLIST_CNT.getGroupName());
 					removeCachedStatisticAndControl(cachedStats, cachedControls, VIAConnectProControllingMetric.STREAMING_START.getGroupName());
 				}
-				newStats.putAll(cachedStats);
 				populateCachedStreamingControl(newStats, newControls, cachedControls);
+				newStats.putAll(cachedStats);
 				populateCachedControlProperties(newControls, cachedControls);
 			}
 		} finally {
@@ -431,7 +430,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param controls List of AdvancedControllableProperty
 	 */
 	private void populateDeviceSettingsGroup(Map<String, String> statistics, List<AdvancedControllableProperty> controls) {
-		if (!isModerator()) {
+		if (!isConfigManagement()) {
 			return;
 		}
 		// Activate system log
@@ -453,19 +452,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String chromeAPIModeStatus = rawResponseHandling(rawChromeAPIModeStatus);
 		String chromeAPIModeStatusString = VIAConnectProConstant.ZERO.equals(chromeAPIModeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.API_SETTINGS_COMMAND), chromeAPIModeStatusString);
-		// Audio devices
-		param = Collections.singletonList(VIAConnectProMonitoringMetric.AUDIO_DEVICES_GET.getParam());
-		String rawAudioDevices = sendTelnetCommand(VIAConnectProMonitoringMetric.AUDIO_DEVICES_GET.getCommand(), param, false);
-		if (rawAudioDevices.contains(VIAConnectProErrorMetric.ERROR_704.getErrorCode())) {
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), VIAConnectProConstant.NONE);
-			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_704.getErrorCode(), VIAConnectProErrorMetric.ERROR_704.getErrorDescription()));
-		} else {
-			String[] audioDevicesWithActiveDevice = rawAudioDevices.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-			String currentActiveDevice = audioDevicesWithActiveDevice[audioDevicesWithActiveDevice.length - 1];
-			String[] audioDevices = audioDevicesWithActiveDevice[audioDevicesWithActiveDevice.length - 2].split(VIAConnectProConstant.HASH);
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), currentActiveDevice);
-			controls.add(createDropdown(String.format("%s#%s", groupName, VIAConnectProConstant.AUDIO_OUTPUT), Arrays.asList(audioDevices), currentActiveDevice));
-		}
 		// Quick client access
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getParam());
 		String rawQuickClientAccessStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getCommand(), param, false);
@@ -508,7 +494,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param statistics Map of statistics
 	 */
 	private void populateDeviceSettingsModeratorGroup(Map<String, String> statistics) {
-		if (!isModerator()) {
+		if (!isConfigManagement()) {
 			return;
 		}
 		// Moderator-Status
@@ -517,7 +503,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String rawPresentationModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.MODERATOR_MODE_STATUS_GET.getCommand(), param, false);
 		String presentationModeStatus = rawResponseHandling(rawPresentationModeStatus);
 		String presentationModeStatusString = VIAConnectProConstant.ZERO.equals(presentationModeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.STATUS), presentationModeStatusString);
+		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.MODERATOR_MODE_STATUS), presentationModeStatusString);
 		// Moderator-ParticipantPresentConfirm
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getParam());
 		String rawPartPresentConfirm = sendTelnetCommand(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getCommand(), param, false);
@@ -526,7 +512,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		if (partPresentConfirm.equals(VIAConnectProConstant.ERROR_1008)) {
 			return;
 		}
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.PARTICIPANT_PRESENT_CONFIRM), partPresentConfirmString);
+		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.PARTICIPANT_PRESENTATION_START_CONFIRM), partPresentConfirmString);
 	}
 
 	/**
@@ -535,7 +521,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param statistics Map of statistics
 	 */
 	private void populateDeviceSettingsRoomOverlayGroup(Map<String, String> statistics) {
-		if (!isModerator()) {
+		if (!isConfigManagement()) {
 			return;
 		}
 		String groupName = VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getGroupName();
@@ -544,7 +530,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String[] roomOverlayResponse = rawRoomOverlayStatus.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 		String roomOverlayStatus = roomOverlayResponse[2];
 		String roomOverlayStatusString = VIAConnectProConstant.ZERO.equals(roomOverlayStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.STATUS), roomOverlayStatusString);
+		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.ROOM_OVERLAY_ACTIVE_STATUS), roomOverlayStatusString);
 		if (VIAConnectProConstant.ONE.equals(roomOverlayStatus)) {
 			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUTO_HIDE_TIME), roomOverlayResponse[3]);
 		}
@@ -585,7 +571,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param statistics Map of statistics
 	 */
 	private void populateUserModeration(Map<String, String> statistics, List<AdvancedControllableProperty> controls) {
-		if (!isModerator()) {
+		if (!isConfigManagement()) {
 			return;
 		}
 		String groupName = VIAConnectProConstant.USER_MODERATION;
@@ -607,7 +593,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			displayStatus = VIAConnectProConstant.NOT_PRESENTING;
 		}
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_DISPLAY_STATUS), displayStatus);
-		if (isModerator()) {
+		if (isConfigManagement()) {
 			if (VIAConnectProConstant.PRESENTING.equals(displayStatus)) {
 				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName());
 				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName(), "Stopping presentation..."));
@@ -617,11 +603,12 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			}
 		}
 		// Kick user:
-		if (isModerator()) {
+		if (isConfigManagement()) {
 			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_KICK_OFF), VIAConnectProConstant.EMPTY);
-			controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_KICK_OFF), VIAConnectProConstant.USER_KICK_OFF, "Kicking user ..."));
+			controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_KICK_OFF), VIAConnectProConstant.KICK_OFF, "Kicking user ..."));
 		}
 	}
+
 	/**
 	 * Populate streaming control statistics and controls
 	 *
@@ -629,24 +616,27 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param controls List of AdvancedControllableProperty
 	 */
 	private void populateStreamingFromDeviceToExternal(Map<String, String> statistics, List<AdvancedControllableProperty> controls) {
-		if (!isModerator()) {
-			return;
-		}
-		String groupName = VIAConnectProControllingMetric.STREAMING_START.getGroupName();
-		// Check usernames
-		List<String> usernames = new ArrayList<>();
-		if (!isValidUsernameListAndPopulateList(statistics, controls, groupName, usernames, false, null)) {
+		if (!isConfigManagement()) {
 			return;
 		}
 		// Check if streaming is activated
+		String groupName = VIAConnectProControllingMetric.STREAMING_START.getGroupName();
 		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getParam());
 		String rawStreamingGetResponse = sendTelnetCommand(VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getCommand(), param, false);
 		String[] streamingGetResponse = rawStreamingGetResponse.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 		String streamingStatus = streamingGetResponse[2];
+		// Check usernames
+		List<String> usernames = new ArrayList<>();
+		if (!VIAConnectProConstant.ZERO.equals(streamingStatus)) {
+			if (!isValidUsernameListAndPopulateList(statistics, controls, groupName, usernames, false, null)) {
+				return;
+			}
+		}
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.STREAMING_MODE), streamingStatus);
 		controls.add(createSwitch(String.format("%s#%s", groupName, VIAConnectProConstant.STREAMING_MODE), Integer.parseInt(streamingStatus),
 				VIAConnectProConstant.DEACTIVATE,
 				VIAConnectProConstant.ACTIVATE));
+
 		if (VIAConnectProConstant.ZERO.equals(streamingStatus)) {
 			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.URL), VIAConnectProConstant.UDP);
 			controls.add(createText(String.format("%s#%s", groupName, VIAConnectProConstant.URL), VIAConnectProConstant.UDP));
@@ -974,7 +964,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getParam());
 				String rawStreamingGetResponse = sendTelnetCommand(VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getCommand(), param, false);
 				String[] streamingGetResponse = rawStreamingGetResponse.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-				// Populate new status
+				// Populate new status≡
 				populateStreamingFromDeviceToExternalStatus(currentStats, groupName, streamingGetResponse);
 				if (VIAConnectProConstant.START.equals(cachedControlValue) || VIAConnectProConstant.STOP.equals(cachedControlValue)) {
 					currentStats.remove(String.format("%s#%s", groupName, VIAConnectProConstant.NEW_URL));
@@ -1029,8 +1019,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				break;
 			case VIAConnectProConstant.WIFI_GUEST_MODE:
 				normalControlProperties(VIAConnectProControllingMetric.WIFI_GUEST_MODE_SET, propertyName, propertyValue);
-				break;
-			case VIAConnectProConstant.AUDIO_OUTPUT:
 				break;
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + propertyName);
@@ -1094,7 +1082,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 						break;
 					case VIAConnectProConstant.START_STREAMING:
 						String newStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL));
-						if (!newStreamURL.contains("udp://") || !newStreamURL.contains("rtsp://") || !newStreamURL.contains("https://")) {
+						if (!newStreamURL.contains(VIAConnectProConstant.UDP) && !newStreamURL.contains(VIAConnectProConstant.RTSP) && !newStreamURL.contains(VIAConnectProConstant.HTTPS)) {
 								throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_URL.getCommand(),
 										String.format("Fail to start new stream with URL: %s. Only accept UDP, RTSP or youtube link.", newStreamURL));
 						}
@@ -1116,7 +1104,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 						break;
 					case VIAConnectProConstant.STOP_STREAMING:
 						String stopStreamURL = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.EXTERNAL_STREAM_URL));
-						if (!stopStreamURL.contains("udp://") || !stopStreamURL.contains("rtsp://") || !stopStreamURL.contains("https://")) {
+						if (!stopStreamURL.contains(VIAConnectProConstant.UDP) && !stopStreamURL.contains(VIAConnectProConstant.RTSP) && !stopStreamURL.contains(VIAConnectProConstant.HTTPS)) {
 							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_URL.getCommand(),
 									String.format("Fail to stop stream with URL: %s. Only accept UDP, RTSP or youtube link.", stopStreamURL));
 						}
@@ -1252,8 +1240,15 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				// Example response: Streaming|Set|P2|0/1. 0 is fail, 1 is success
 				if (!VIAConnectProConstant.ONE.equals(splitRawSetStreamingMode[splitRawSetStreamingMode.length - 1])) {
 					String errorStatus = propertyValue.equals(VIAConnectProConstant.ONE) ? VIAConnectProConstant.ACTIVATE : VIAConnectProConstant.DEACTIVATE;
+					String errorMessage = String.format("Fail to set streaming mode to %s.", errorStatus);
+					if (rawSetStreamingMode.contains(VIAConnectProConstant.ERROR)) {
+						VIAConnectProErrorMetric viaConnectProErrorMetric = VIAConnectProErrorMetric.getByCode(splitRawSetStreamingMode[splitRawSetStreamingMode.length - 1]);
+						if (viaConnectProErrorMetric != null) {
+							errorMessage += String.format("Error code: %s, description: %s", viaConnectProErrorMetric.getErrorCode(), viaConnectProErrorMetric.getErrorDescription());
+						}
+					}
 					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.STREAMING_STATUS_SET.getCommand(),
-							String.format("Fail to %s streaming mode", errorStatus));
+							errorMessage);
 				}
 				removeCachedStatisticAndControl(cachedStats1, cachedControls1, VIAConnectProControllingMetric.STREAMING_STATUS_SET.getGroupName());
 				break;
@@ -1334,16 +1329,16 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	}
 
 	/**
-	 * Check if userRole is moderator, if it is invalid string => treat as moderator
+	 * Check if configManagement is moderator, if it is invalid string => treat as moderator
 	 *
 	 * @return boolean value.
 	 */
-	private boolean isModerator() {
-		// If userRole is null or empty => treat it as Moderator
-		if (StringUtils.isNullOrEmpty(this.getUserRole())) {
+	private boolean isConfigManagement() {
+		// If configManagement is null or empty => treat it as Moderator
+		if (StringUtils.isNullOrEmpty(this.getConfigManagement())) {
 			return false;
 		} else
-			return this.getUserRole().trim().equals(VIAConnectProConstant.MODERATOR);
+			return this.getConfigManagement().toLowerCase(Locale.ROOT).trim().equals(VIAConnectProConstant.TRUE);
 	}
 
 	/**

@@ -42,7 +42,7 @@ class VIAConnectProCommunicatorTest {
         viaConnectProCommunicator.setPort(PORT);
         viaConnectProCommunicator.setLogin(USERNAME);
         viaConnectProCommunicator.setPassword(PASSWORD);
-        viaConnectProCommunicator.setUserRole("Moderator");
+        viaConnectProCommunicator.setConfigManagement("true");
         viaConnectProCommunicator.internalInit();
     }
 
@@ -75,27 +75,26 @@ class VIAConnectProCommunicatorTest {
         Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsGroup, VIAConnectProConstant.ACTIVATE_SYSTEM_LOG)));
         Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsGroup, VIAConnectProConstant.JOIN_THROUGH_BROWSER)));
         Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsGroup, VIAConnectProConstant.API_SETTINGS_COMMAND)));
-        Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsGroup, VIAConnectProConstant.AUDIO_OUTPUT)));
         Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsGroup, VIAConnectProConstant.QUICK_CLIENT_ACCESS)));
         Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsGroup, VIAConnectProConstant.VOLUME)));
 
         String deviceSettingsModeratorGroup = VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getGroupName();
-        Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsModeratorGroup, VIAConnectProConstant.STATUS)));
-        Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsModeratorGroup, VIAConnectProConstant.PARTICIPANT_PRESENT_CONFIRM)));
+        Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsModeratorGroup, VIAConnectProConstant.MODERATOR_MODE_STATUS)));
+        Assertions.assertNotNull(stats.get(String.format("%s#%s", deviceSettingsModeratorGroup, VIAConnectProConstant.PARTICIPANT_PRESENTATION_START_CONFIRM)));
 
-        Assertions.assertNotNull(stats.get(String.format("%s#%s", VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getGroupName(), VIAConnectProConstant.STATUS)));
+        Assertions.assertNotNull(stats.get(String.format("%s#%s", VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getGroupName(), VIAConnectProConstant.ROOM_OVERLAY_ACTIVE_STATUS)));
     }
 
     /**
      * Test get statistics:
-     * - Get statistics and controls from the device with user role
+     * - Get statistics and controls from the device with configManagement is false
      * @throws Exception When fail to getMultipleStatistics
      */
     @Test
     @Tag("RealDevice")
-    void testGetMultipleStatisticsWithUserRole() throws Exception {
+    void testGetMultipleStatisticsWithConfigManagementFalse() throws Exception {
         viaConnectProCommunicator.internalDestroy();
-        viaConnectProCommunicator.setUserRole("User");
+        viaConnectProCommunicator.setConfigManagement("false");
         viaConnectProCommunicator.internalInit();
         ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
         Map<String, String> stats = extendedStatistics.getStatistics();
@@ -105,15 +104,15 @@ class VIAConnectProCommunicatorTest {
 
     /**
      * Test get statistics:
-     * - Get statistics and controls from the device with invalid user role.
+     * - Get statistics and controls from the device with invalid configManagement.
      * @throws Exception When fail to getMultipleStatistics
      */
     @Test
     @Tag("RealDevice")
-    void testGetMultipleStatisticsWithUserRoleInvalid() throws Exception {
+    void testGetMultipleStatisticsWithConfigManagementInvalid() throws Exception {
         viaConnectProCommunicator.internalDestroy();
-        // Invalid userRole => Role will be set to User
-        viaConnectProCommunicator.setUserRole("@@##");
+        // Invalid configManagement => configManagement will be set to false
+        viaConnectProCommunicator.setConfigManagement("@@##");
         viaConnectProCommunicator.internalInit();
         ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
         Map<String, String> stats = extendedStatistics.getStatistics();
@@ -123,15 +122,15 @@ class VIAConnectProCommunicatorTest {
 
     /**
      * Test get statistics:
-     * - Get statistics and controls from the device with userRole = Empty
+     * - Get statistics and controls from the device with configManagement = Empty
      * @throws Exception When fail to getMultipleStatistics
      */
     @Test
     @Tag("RealDevice")
-    void testGetMultipleStatisticsWithUserRoleEmpty() throws Exception {
+    void testGetMultipleStatisticsWithConfigManagementEmpty() throws Exception {
         viaConnectProCommunicator.internalDestroy();
-        viaConnectProCommunicator.setUserRole("");
-        // When userRole is empty, role will be set to User
+        viaConnectProCommunicator.setConfigManagement("");
+        // When configManagement is empty, configManagement will be set to false
         viaConnectProCommunicator.internalInit();
         ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
         Map<String, String> stats = extendedStatistics.getStatistics();
@@ -141,32 +140,19 @@ class VIAConnectProCommunicatorTest {
 
     /**
      * Test get statistics:
-     * - Get statistics and controls from the device with moderator role
+     * - Get statistics and controls from the device with configManagement true
      * @throws Exception When fail to getMultipleStatistics
      */
     @Test
     @Tag("RealDevice")
-    void testGetMultipleStatisticsWithModRole() throws Exception {
+    void testGetMultipleStatisticsWithConfigManagementTrue() throws Exception {
         viaConnectProCommunicator.internalDestroy();
-        viaConnectProCommunicator.setUserRole("Moderator");
+        viaConnectProCommunicator.setConfigManagement("true");
         viaConnectProCommunicator.internalInit();
         ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
         Map<String, String> stats = extendedStatistics.getStatistics();
         String groupName = VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getGroupName();
-        Assertions.assertNotNull(stats.get(String.format("%s#%s", groupName, VIAConnectProConstant.STATUS)));
-    }
-
-    /**
-     * Test get statistics:
-     * - Test when no one is logged-in
-     * @throws Exception When fail to control or get statistics
-     */
-    @Test
-    @Tag("RealDevice")
-    void testNoUserLogin() throws Exception {
-        ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
-        Map<String, String> stats = extendedStatistics.getStatistics();
-        Assertions.assertEquals("No one is logged in.",stats.get(String.format("%s#%s", VIAConnectProConstant.PARTICIPANT_LIST, VIAConnectProConstant.USER)));
+        Assertions.assertNotNull(stats.get(String.format("%s#%s", groupName, VIAConnectProConstant.ROOM_OVERLAY_ACTIVE_STATUS)));
     }
 
     /**

@@ -34,7 +34,6 @@ public class VIAConnectProConstant {
 	public static final String CURRENT_LOGGED_IN_USERS = "CurrentLoggedInUsers";
 	public static final String PARTICIPANT = "Participant";
 	public static final String COMMA = ",";
-	public static final String PARTICIPANT_LIST = "ParticipantList";
 	public static final String VOLUME = "Volume";
 	public static final String ACTIVATE_SYSTEM_LOG = "ActivateSystemLog";
 	public static final String QUICK_CLIENT_ACCESS = "QuickClientAccess";
@@ -42,8 +41,7 @@ public class VIAConnectProConstant {
 	public static final String MAC_ADDRESS = "MacAddress";
 	public static final String VERSION = "Version";
 	public static final String JOIN_THROUGH_BROWSER = "JoinThroughBrowser";
-	public static final String AUDIO_OUTPUT = "AudioOutput";
-	public static final String PARTICIPANT_PRESENT_CONFIRM = "ParticipantPresentConfirm";
+
 	public static final String UNDER_SCORE = "_";
 	public static final String USER_DISPLAY_STATUS = "UserDisplayStatus";
 	public static final String HOST_NAME = "HostName";
@@ -80,7 +78,6 @@ public class VIAConnectProConstant {
 	public static final String SCHANGE_SPECIAL_CASE = "SChange";
 	public static final String USR_NOT_EXIST = "UsrNotExist";
 	public static final String ZERO = "0";
-	public static final String MODERATOR = "Moderator";
 	public static final String ONE = "1";
 	public static final String UDP = "udp://";
 	public static final String RTSP = "rtsp://";
@@ -97,4 +94,10 @@ public class VIAConnectProConstant {
 	public static final String ENABLE = "Enable";
 	public static final String USER_MODERATION = "UserModeration";
 	public static final String WAITING = "Waiting";
+	public static final String HTTPS = "https://";
+	public static final String MODERATOR_MODE_STATUS = "ModeratorModeStatus";
+	public static final String PARTICIPANT_PRESENTATION_START_CONFIRM = "ParticipantPresentationStartConfirm";
+	public static final String TRUE = "true";
+	public static final String KICK_OFF = "KickOff";
+	public static final String ROOM_OVERLAY_ACTIVE_STATUS = "RoomOverlayActiveStatus";
 }
