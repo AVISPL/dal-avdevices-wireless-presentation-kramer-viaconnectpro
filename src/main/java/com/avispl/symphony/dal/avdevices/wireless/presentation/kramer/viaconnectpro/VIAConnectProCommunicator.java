@@ -625,18 +625,10 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String rawStreamingGetResponse = sendTelnetCommand(VIAConnectProMonitoringMetric.STREAMING_STATUS_GET.getCommand(), param, false);
 		String[] streamingGetResponse = rawStreamingGetResponse.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 		String streamingStatus = streamingGetResponse[2];
-		// Check usernames
-		List<String> usernames = new ArrayList<>();
-		if (!VIAConnectProConstant.ZERO.equals(streamingStatus)) {
-			if (!isValidUsernameListAndPopulateList(statistics, controls, groupName, usernames, false, null)) {
-				return;
-			}
-		}
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.STREAMING_MODE), streamingStatus);
 		controls.add(createSwitch(String.format("%s#%s", groupName, VIAConnectProConstant.STREAMING_MODE), Integer.parseInt(streamingStatus),
 				VIAConnectProConstant.DEACTIVATE,
 				VIAConnectProConstant.ACTIVATE));
-
 		if (VIAConnectProConstant.ZERO.equals(streamingStatus)) {
 			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.URL), VIAConnectProConstant.UDP);
 			controls.add(createText(String.format("%s#%s", groupName, VIAConnectProConstant.URL), VIAConnectProConstant.UDP));
@@ -1062,7 +1054,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 								throw new IllegalArgumentException("Unexpected value: " + propertyName);
 						}
 						break;
-					case VIAConnectProConstant.USER:
 					case VIAConnectProConstant.URL:
 					case VIAConnectProConstant.URL_1:
 					case VIAConnectProConstant.URL_2:
@@ -1258,25 +1249,24 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				Map<String, String> cachedStats2 = cachedLocalExtendedStatistics.getStatistics();
 				List<AdvancedControllableProperty> cachedControls2 = cachedLocalExtendedStatistics.getControllableProperties();
 				String currentAction = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.ACTION));
-				String userName = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.USER));
 				List<String> param = new ArrayList<>();
 				if (currentAction.equals(VIAConnectProConstant.START) || currentAction.equals(VIAConnectProConstant.STOP)) {
 					String command = currentAction.equals(VIAConnectProConstant.START) ? VIAConnectProControllingMetric.STREAMING_START.getCommand() : VIAConnectProControllingMetric.STREAMING_STOP.getCommand();
 					String firstParam = currentAction.equals(VIAConnectProConstant.START) ? VIAConnectProControllingMetric.STREAMING_START.getParam() : VIAConnectProControllingMetric.STREAMING_STOP.getParam();
 					param.add(firstParam);
-					param.add(userName);
+					param.add(this.getLogin());
 					String rawStartOrStopStream = sendTelnetCommand(command, param, true);
 					String[] splitRawStartOrStopStream = rawStartOrStopStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 					// Example response: SStart/SStop|0/1|ID. 0 is fail, 1 is success
 					if (!VIAConnectProConstant.ONE.equals(splitRawStartOrStopStream[1])) {
-						populateErrorMessageForStreaming(currentAction, userName, command, rawStartOrStopStream, splitRawStartOrStopStream);
+						populateErrorMessageForStreaming(currentAction, this.getLogin(), command, rawStartOrStopStream, splitRawStartOrStopStream);
 					}
 				} else {
 					String command = currentAction.equals(VIAConnectProConstant.RESTART) ? VIAConnectProControllingMetric.STREAMING_RESTART.getCommand() : VIAConnectProControllingMetric.STREAMING_CHANGE.getCommand();
 					String firstParam = currentAction.equals(VIAConnectProConstant.RESTART) ? VIAConnectProControllingMetric.STREAMING_RESTART.getParam() : VIAConnectProControllingMetric.STREAMING_CHANGE.getParam();
 
 					param.add(firstParam);
-					param.add(userName);
+					param.add(this.getLogin());
 
 					if (isDualDisplayStreaming()) {
 						String urlName1 = localStats2.get(String.format("%s#%s", streamGroupName, VIAConnectProConstant.NEW_URL_1));
@@ -1296,7 +1286,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 					String[] splitRawRestartOrChangeStream = rawRestartOrChangeStream.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 					// Example response: Streaming|SRestart/SChange|0/1. 0 is fail, 1 is success
 					if (!VIAConnectProConstant.ONE.equals(splitRawRestartOrChangeStream[2])) {
-						populateErrorMessageForStreaming(currentAction, userName, command, rawRestartOrChangeStream, splitRawRestartOrChangeStream);
+						populateErrorMessageForStreaming(currentAction, this.getLogin(), command, rawRestartOrChangeStream, splitRawRestartOrChangeStream);
 						return;
 					}
 				}
