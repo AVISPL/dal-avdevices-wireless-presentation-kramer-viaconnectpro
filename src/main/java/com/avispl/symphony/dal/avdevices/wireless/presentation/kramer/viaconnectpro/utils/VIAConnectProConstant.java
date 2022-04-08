@@ -100,4 +100,5 @@ public class VIAConnectProConstant {
 	public static final String TRUE = "true";
 	public static final String KICK_OFF = "KickOff";
 	public static final String ROOM_OVERLAY_ACTIVE_STATUS = "RoomOverlayActiveStatus";
+	public static final String IN_PROGRESS = "In progress";
 }
