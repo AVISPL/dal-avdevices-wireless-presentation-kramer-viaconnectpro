@@ -169,8 +169,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 */
 	@Override
 	protected void internalDestroy() {
-		cachedLocalExtendedStatistics.setStatistics(new HashMap<>());
-		cachedLocalExtendedStatistics.setControllableProperties(new ArrayList<>());
+		cachedLocalExtendedStatistics.getStatistics().clear();
+		cachedLocalExtendedStatistics.getControllableProperties().clear();
 		this.destroyChannel();
 		super.internalDestroy();
 	}
