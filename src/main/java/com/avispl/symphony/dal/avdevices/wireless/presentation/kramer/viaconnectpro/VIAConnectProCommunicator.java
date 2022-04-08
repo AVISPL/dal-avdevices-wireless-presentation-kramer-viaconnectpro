@@ -463,17 +463,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String rawVolume = sendTelnetCommand(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false);
 		String[] splitVolume = rawVolume.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 		String volume = splitVolume[2];
-		String labelStart;
-		float rangeStart;
-		if (VIAConnectProConstant.ZERO.equals(volume) || VIAConnectProConstant.ONE.equals(splitVolume[3])) {
-			rangeStart = 0;
-			labelStart = "0%";
-		} else {
-			rangeStart = 1f;
-			labelStart = "1%";
-		}
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), volume);
-		controls.add(createSlider(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), labelStart, "100%", rangeStart, 100f, Float.valueOf(volume)));
+		controls.add(createSlider(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), "0%", "100%", 0f, 100f, Float.valueOf(volume)));
 		// Wifi guest mode
 		String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getParam()), false);
 		String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
@@ -596,10 +587,10 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		if (isConfigManagement()) {
 			if (VIAConnectProConstant.PRESENTING.equals(displayStatus)) {
 				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName());
-				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName(), "Stopping presentation..."));
+				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName(), VIAConnectProConstant.IN_PROGRESS));
 			} else {
 				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName());
-				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName(), "Starting presentation..."));
+				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName(), VIAConnectProConstant.IN_PROGRESS));
 			}
 		}
 		// Kick user:
