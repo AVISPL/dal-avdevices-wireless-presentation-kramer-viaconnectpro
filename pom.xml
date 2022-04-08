@@ -11,7 +11,7 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <symphonyApiVersion>5.4.0</symphonyApiVersion>
+        <symphonyApiVersion>5.5.0</symphonyApiVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <build>
@@ -95,21 +95,21 @@
             <artifactId>symphony-api-dal</artifactId>
             <version>${symphonyApiVersion}</version>
             <scope>system</scope>
-            <systemPath>${basedir}/lib/symphony-api-dal-5.4.0.jar</systemPath>
+            <systemPath>${basedir}/lib/symphony-api-dal-5.5.0.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>com.avispl.symphony.dal</groupId>
             <artifactId>symphony-dal-commons</artifactId>
             <version>${symphonyApiVersion}</version>
             <scope>system</scope>
-            <systemPath>${basedir}/lib/symphony-dal-commons-5.4.0.jar</systemPath>
+            <systemPath>${basedir}/lib/symphony-dal-commons-5.5.0.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>com.avispl.symphony.api</groupId>
             <artifactId>symphony-api-commons</artifactId>
             <version>${symphonyApiVersion}</version>
             <scope>system</scope>
-            <systemPath>${basedir}/lib/symphony-api-commons-5.4.0.jar</systemPath>
+            <systemPath>${basedir}/lib/symphony-api-commons-5.5.0.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>org.icmp4j</groupId>
