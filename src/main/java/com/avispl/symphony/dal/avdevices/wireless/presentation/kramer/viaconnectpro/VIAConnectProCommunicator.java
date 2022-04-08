@@ -1129,7 +1129,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				volumeParams.add(VIAConnectProControllingMetric.VOLUME_SET.getParam());
 				String stringVolume = String.valueOf(Float.valueOf(propertyValue).intValue());
 				if (VIAConnectProConstant.ZERO.equals(stringVolume)) {
-					stringVolume = VIAConnectProConstant.ONE;
+					break;
 				}
 				volumeParams.add(stringVolume); // param must have type integer.
 				String rawVolumeSet = sendTelnetCommand(VIAConnectProControllingMetric.VOLUME_SET.getCommand(), volumeParams, true);
