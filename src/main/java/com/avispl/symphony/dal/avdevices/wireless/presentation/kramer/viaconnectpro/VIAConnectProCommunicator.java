@@ -587,10 +587,10 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		if (isConfigManagement()) {
 			if (VIAConnectProConstant.PRESENTING.equals(displayStatus)) {
 				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName());
-				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName(), VIAConnectProConstant.IN_PROGRESS));
+				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.STOP.getName(), "Stopping presentation..."));
 			} else {
 				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName());
-				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName(), VIAConnectProConstant.IN_PROGRESS));
+				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName(), "Starting presentation..."));
 			}
 		}
 		// Kick user:
