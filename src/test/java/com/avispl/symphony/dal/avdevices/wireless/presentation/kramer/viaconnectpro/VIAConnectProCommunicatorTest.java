@@ -63,7 +63,7 @@ class VIAConnectProCommunicatorTest {
         Map<String, String> stats = extendedStatistics.getStatistics();
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.IP_ADDRESS));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.SUBNET_MASK));
-        Assertions.assertNotNull(stats.get(VIAConnectProConstant.GATEWAY));
+        Assertions.assertNotNull(stats.get(VIAConnectProConstant.DEFAULT_GATEWAY));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.DNS_SERVER));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.HOST_NAME));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.ROOM_CODE));

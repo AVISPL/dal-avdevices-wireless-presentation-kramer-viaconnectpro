@@ -378,7 +378,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		String[] ipInformation = rawIpInformation.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
 		statistics.put(VIAConnectProConstant.IP_ADDRESS, ipInformation[0].split(VIAConnectProConstant.COLON)[1]);
 		statistics.put(VIAConnectProConstant.SUBNET_MASK, ipInformation[1].split(VIAConnectProConstant.COLON)[1]);
-		statistics.put(VIAConnectProConstant.GATEWAY, ipInformation[2].split(VIAConnectProConstant.COLON)[1]);
+		statistics.put(VIAConnectProConstant.DEFAULT_GATEWAY, ipInformation[2].split(VIAConnectProConstant.COLON)[1]);
 		statistics.put(VIAConnectProConstant.DNS_SERVER, ipInformation[3].split(VIAConnectProConstant.COLON)[1]);
 		statistics.put(VIAConnectProConstant.HOST_NAME, ipInformation[4].split(VIAConnectProConstant.COLON)[1]);
 		// Room code
@@ -450,7 +450,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getParam());
 		String rawChromeAPIModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getCommand(), param, false);
 		String chromeAPIModeStatus = rawResponseHandling(rawChromeAPIModeStatus);
-		String chromeAPIModeStatusString = VIAConnectProConstant.ZERO.equals(chromeAPIModeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
+		String chromeAPIModeStatusString = VIAConnectProConstant.ZERO.equals(chromeAPIModeStatus) ? VIAConnectProConstant.NON_SECURE : VIAConnectProConstant.SECURE;
 		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.API_SETTINGS_COMMAND), chromeAPIModeStatusString);
 		// Quick client access
 		param = Collections.singletonList(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getParam());
