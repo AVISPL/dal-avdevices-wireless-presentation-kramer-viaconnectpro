@@ -320,14 +320,16 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param controls List of AdvancedControllableProperty
 	 */
 	private void populateStatistics(Map<String, String> statistics, List<AdvancedControllableProperty> controls) {
-		populateNonGroupProperties(statistics);
-		populateDeviceSettingsGroup(statistics, controls);
-		populateDeviceSettingsModeratorGroup(statistics);
-		populateDeviceSettingsRoomOverlayGroup(statistics);
+		List<String> noneValueStatistics = new ArrayList<>();
+		populateNonGroupProperties(statistics, noneValueStatistics);
+		populateDeviceSettingsGroup(statistics, controls, noneValueStatistics);
+		populateDeviceSettingsModeratorGroup(statistics, noneValueStatistics);
+		populateDeviceSettingsRoomOverlayGroup(statistics, noneValueStatistics);
 		populateParticipantGroup(statistics, controls);
 		populateUserModeration(statistics, controls);
 		populateStreamingFromExternalToDevice(statistics, controls);
 		populateStreamingFromDeviceToExternal(statistics, controls);
+		populateNoneProperties(statistics, noneValueStatistics);
 	}
 
 	/**
@@ -368,58 +370,101 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	}
 
 	/**
+	 * Populate None value for properties that contains exception/error response.
+	 *
+	 * @param statistics Map of statistics
+	 * @param noneValueStatistics List of properties that contain exception
+	 */
+	private void populateNoneProperties(Map<String, String> statistics, List<String> noneValueStatistics) {
+		if (noneValueStatistics.size() != 0) {
+			for (String propertyName: noneValueStatistics
+			) {
+				statistics.put(propertyName, VIAConnectProConstant.NONE);
+			}
+		}
+	}
+
+	/**
 	 * Populate Statistics for properties not in any group
 	 *
 	 * @param statistics Map of statistics
+	 * @param noneValueStatistics List of properties that contain exception
 	 */
-	private void populateNonGroupProperties(Map<String, String> statistics) {
+	private void populateNonGroupProperties(Map<String, String> statistics, List<String> noneValueStatistics) {
 		// IP Information
-		String rawIpInformation = sendTelnetCommand(VIAConnectProMonitoringMetric.IP_INFORMATION.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.IP_INFORMATION.getParam()), false);
-		String[] ipInformation = rawIpInformation.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-		statistics.put(VIAConnectProConstant.IP_ADDRESS, ipInformation[0].split(VIAConnectProConstant.COLON)[1]);
-		statistics.put(VIAConnectProConstant.SUBNET_MASK, ipInformation[1].split(VIAConnectProConstant.COLON)[1]);
-		statistics.put(VIAConnectProConstant.DEFAULT_GATEWAY, ipInformation[2].split(VIAConnectProConstant.COLON)[1]);
-		statistics.put(VIAConnectProConstant.DNS_SERVER, ipInformation[3].split(VIAConnectProConstant.COLON)[1]);
-		statistics.put(VIAConnectProConstant.HOST_NAME, ipInformation[4].split(VIAConnectProConstant.COLON)[1]);
-		// Room code
-		String rawRoomCode = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_CODE.getCommand(), Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE.getParam().split(VIAConnectProConstant.COMMA)), false);
-		if (rawRoomCode.contains(VIAConnectProErrorMetric.ERROR_21.getErrorCode())) {
-			statistics.put(VIAConnectProConstant.ROOM_CODE, VIAConnectProConstant.NONE);
-			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_21.getErrorCode(), VIAConnectProErrorMetric.ERROR_21.getErrorDescription()));
-		} else {
-			String roomCode = rawResponseHandling(rawRoomCode);
-			statistics.put(VIAConnectProConstant.ROOM_CODE, roomCode);
+		try {
+			String rawIpInformation = sendTelnetCommand(VIAConnectProMonitoringMetric.IP_INFORMATION.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.IP_INFORMATION.getParam()), false);
+			String[] ipInformation = rawIpInformation.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+			if (ipInformation.length != 5) {
+				throw new ResourceNotReachableException("Error while getting ip information, the response doesn't contain the expected length");
+			}
+			statistics.put(VIAConnectProConstant.IP_ADDRESS, ipInformation[0].split(VIAConnectProConstant.COLON)[1]);
+			statistics.put(VIAConnectProConstant.SUBNET_MASK, ipInformation[1].split(VIAConnectProConstant.COLON)[1]);
+			statistics.put(VIAConnectProConstant.DEFAULT_GATEWAY, ipInformation[2].split(VIAConnectProConstant.COLON)[1]);
+			statistics.put(VIAConnectProConstant.DNS_SERVER, ipInformation[3].split(VIAConnectProConstant.COLON)[1]);
+			statistics.put(VIAConnectProConstant.HOST_NAME, ipInformation[4].split(VIAConnectProConstant.COLON)[1]);
+		} catch (Exception exception) {
+			noneValueStatistics.add(VIAConnectProConstant.IP_ADDRESS);
+			noneValueStatistics.add(VIAConnectProConstant.SUBNET_MASK);
+			noneValueStatistics.add(VIAConnectProConstant.DEFAULT_GATEWAY);
+			noneValueStatistics.add(VIAConnectProConstant.DNS_SERVER);
+			noneValueStatistics.add(VIAConnectProConstant.HOST_NAME);
+			logger.error(exception.getMessage(), exception);
 		}
-
+		// Room code
+		try {
+			String rawRoomCode = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_CODE.getCommand(), Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE.getParam().split(VIAConnectProConstant.COMMA)), false);
+			if (rawRoomCode.contains(VIAConnectProErrorMetric.ERROR_21.getErrorCode())) {
+				throw new ResourceNotReachableException(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_21.getErrorCode(), VIAConnectProErrorMetric.ERROR_21.getErrorDescription()));
+			} else {
+				String roomCode = rawResponseHandling(rawRoomCode);
+				statistics.put(VIAConnectProConstant.ROOM_CODE, roomCode);
+			}
+		} catch (Exception exception) {
+			noneValueStatistics.add(VIAConnectProConstant.ROOM_CODE);
+			logger.error(exception.getMessage(), exception);
+		}
 		// Version
 		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.VERSION_GET.getParam());
-		String rawGatewayVersion = sendTelnetCommand(VIAConnectProMonitoringMetric.VERSION_GET.getCommand(), param, false);
-		if (rawGatewayVersion.contains(VIAConnectProErrorMetric.ERROR_703.getErrorCode())) {
-			statistics.put(VIAConnectProConstant.VERSION, VIAConnectProConstant.NONE);
-			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_703.getErrorCode(), VIAConnectProErrorMetric.ERROR_703.getErrorDescription()));
-		} else {
-			String gatewayVersion = rawResponseHandling(rawGatewayVersion);
-			statistics.put(VIAConnectProConstant.VERSION, gatewayVersion);
+		try {
+			String rawGatewayVersion = sendTelnetCommand(VIAConnectProMonitoringMetric.VERSION_GET.getCommand(), param, false);
+			if (rawGatewayVersion.contains(VIAConnectProErrorMetric.ERROR_703.getErrorCode())) {
+				throw new ResourceNotReachableException(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_703.getErrorCode(), VIAConnectProErrorMetric.ERROR_703.getErrorDescription()));
+			} else {
+				String gatewayVersion = rawResponseHandling(rawGatewayVersion);
+				statistics.put(VIAConnectProConstant.VERSION, gatewayVersion);
+			}
+		} catch (Exception exception) {
+			noneValueStatistics.add(VIAConnectProConstant.VERSION);
+			logger.error(exception.getMessage(), exception);
 		}
 		// MacAddress
-		param = Collections.singletonList(VIAConnectProMonitoringMetric.MAC_ADDRESS_GET.getParam());
-		String rawGatewayMacAddress = sendTelnetCommand(VIAConnectProMonitoringMetric.MAC_ADDRESS_GET.getCommand(), param, false);
-		if (rawGatewayMacAddress.contains(VIAConnectProErrorMetric.ERROR_702.getErrorCode())) {
-			statistics.put(VIAConnectProConstant.MAC_ADDRESS, VIAConnectProConstant.NONE);
-			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_702.getErrorCode(), VIAConnectProErrorMetric.ERROR_702.getErrorDescription()));
-		} else {
-			String gatewayMacAddress = rawResponseHandling(rawGatewayMacAddress);
-			statistics.put(VIAConnectProConstant.MAC_ADDRESS, gatewayMacAddress);
+		try {
+			param = Collections.singletonList(VIAConnectProMonitoringMetric.MAC_ADDRESS_GET.getParam());
+			String rawGatewayMacAddress = sendTelnetCommand(VIAConnectProMonitoringMetric.MAC_ADDRESS_GET.getCommand(), param, false);
+			if (rawGatewayMacAddress.contains(VIAConnectProErrorMetric.ERROR_702.getErrorCode())) {
+				throw new ResourceNotReachableException(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_702.getErrorCode(), VIAConnectProErrorMetric.ERROR_702.getErrorDescription()));
+			} else {
+				String gatewayMacAddress = rawResponseHandling(rawGatewayMacAddress);
+				statistics.put(VIAConnectProConstant.MAC_ADDRESS, gatewayMacAddress);
+			}
+		} catch (Exception exception) {
+			noneValueStatistics.add(VIAConnectProConstant.MAC_ADDRESS);
+			logger.error(exception.getMessage(), exception);
 		}
 		// Serial number
-		param = Collections.singletonList(VIAConnectProMonitoringMetric.SERIAL_NUMBER_GET.getParam());
-		String rawGatewaySerialNumber = sendTelnetCommand(VIAConnectProMonitoringMetric.SERIAL_NUMBER_GET.getCommand(), param, false);
-		if (rawGatewaySerialNumber.contains(VIAConnectProErrorMetric.ERROR_701.getErrorCode())) {
-			statistics.put(VIAConnectProConstant.SERIAL_NUMBER, VIAConnectProConstant.NONE);
-			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_701.getErrorCode(), VIAConnectProErrorMetric.ERROR_701.getErrorDescription()));
-		} else {
-			String gatewaySerialNumber = rawResponseHandling(rawGatewaySerialNumber);
-			statistics.put(VIAConnectProConstant.SERIAL_NUMBER, gatewaySerialNumber);
+		try {
+			param = Collections.singletonList(VIAConnectProMonitoringMetric.SERIAL_NUMBER_GET.getParam());
+			String rawGatewaySerialNumber = sendTelnetCommand(VIAConnectProMonitoringMetric.SERIAL_NUMBER_GET.getCommand(), param, false);
+			if (rawGatewaySerialNumber.contains(VIAConnectProErrorMetric.ERROR_701.getErrorCode())) {
+				throw new ResourceNotReachableException(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_701.getErrorCode(), VIAConnectProErrorMetric.ERROR_701.getErrorDescription()));
+			} else {
+				String gatewaySerialNumber = rawResponseHandling(rawGatewaySerialNumber);
+				statistics.put(VIAConnectProConstant.SERIAL_NUMBER, gatewaySerialNumber);
+			}
+		} catch (Exception exception) {
+			noneValueStatistics.add(VIAConnectProConstant.SERIAL_NUMBER);
+			logger.error(exception.getMessage(), exception);
 		}
 	}
 
@@ -428,54 +473,84 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 *
 	 * @param statistics Map of statistics
 	 * @param controls List of AdvancedControllableProperty
+	 * @param noneValueStatistics List of properties that contain exception
 	 */
-	private void populateDeviceSettingsGroup(Map<String, String> statistics, List<AdvancedControllableProperty> controls) {
+	private void populateDeviceSettingsGroup(Map<String, String> statistics, List<AdvancedControllableProperty> controls, List<String> noneValueStatistics) {
 		if (!isConfigManagement()) {
 			return;
 		}
 		// Activate system log
 		String groupName = VIAConnectProMonitoringMetric.ACTIVE_SYSTEM_LOG_GET.getGroupName();
-		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.ACTIVE_SYSTEM_LOG_GET.getParam());
-		String rawLogModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ACTIVE_SYSTEM_LOG_GET.getCommand(), param, false);
-		String logModeStatus = rawResponseHandling(rawLogModeStatus);
-		String logModeString = VIAConnectProConstant.ZERO.equals(logModeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.ACTIVATE_SYSTEM_LOG), logModeString);
-		// Chrome join through browser
-		param = Collections.singletonList(VIAConnectProMonitoringMetric.CHROME_JOIN_THROUGH_BROWSER_GET.getParam());
-		String rawChromeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.CHROME_JOIN_THROUGH_BROWSER_GET.getCommand(), param, false);
-		String chromeStatus = rawResponseHandling(rawChromeStatus);
-		String chromeStatusString = VIAConnectProConstant.ZERO.equals(chromeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.JOIN_THROUGH_BROWSER), chromeStatusString);
-		// Chrome API Mode
-		param = Collections.singletonList(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getParam());
-		String rawChromeAPIModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getCommand(), param, false);
-		String chromeAPIModeStatus = rawResponseHandling(rawChromeAPIModeStatus);
-		String chromeAPIModeStatusString = VIAConnectProConstant.ZERO.equals(chromeAPIModeStatus) ? VIAConnectProConstant.NON_SECURE : VIAConnectProConstant.SECURE;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.API_SETTINGS_COMMAND), chromeAPIModeStatusString);
-		// Quick client access
-		param = Collections.singletonList(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getParam());
-		String rawQuickClientAccessStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getCommand(), param, false);
-		String quickClientAccessStatusInt = rawResponseHandling(rawQuickClientAccessStatus);
 
-		String quickClientAccessStatus = VIAConnectProConstant.ONE.equals(quickClientAccessStatusInt) ? VIAConnectProConstant.ENABLED : VIAConnectProConstant.DISABLED;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.QUICK_CLIENT_ACCESS), quickClientAccessStatus);
+		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.ACTIVE_SYSTEM_LOG_GET.getParam());
+		try {
+			String rawLogModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ACTIVE_SYSTEM_LOG_GET.getCommand(), param, false);
+			String logModeStatus = rawResponseHandling(rawLogModeStatus);
+			String logModeString = VIAConnectProConstant.ZERO.equals(logModeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.ACTIVATE_SYSTEM_LOG), logModeString);
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.ACTIVATE_SYSTEM_LOG));
+			logger.error(exception.getMessage(), exception);
+		}
+		// Chrome join through browser
+		try {
+			param = Collections.singletonList(VIAConnectProMonitoringMetric.CHROME_JOIN_THROUGH_BROWSER_GET.getParam());
+			String rawChromeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.CHROME_JOIN_THROUGH_BROWSER_GET.getCommand(), param, false);
+			String chromeStatus = rawResponseHandling(rawChromeStatus);
+			String chromeStatusString = VIAConnectProConstant.ZERO.equals(chromeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.JOIN_THROUGH_BROWSER), chromeStatusString);
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.JOIN_THROUGH_BROWSER));
+			logger.error(exception.getMessage(), exception);
+		}
+		// Chrome API Mode
+		try {
+			param = Collections.singletonList(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getParam());
+			String rawChromeAPIModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.CHROME_API_MODE_GET.getCommand(), param, false);
+			String chromeAPIModeStatus = rawResponseHandling(rawChromeAPIModeStatus);
+			String chromeAPIModeStatusString = VIAConnectProConstant.ZERO.equals(chromeAPIModeStatus) ? VIAConnectProConstant.NON_SECURE : VIAConnectProConstant.SECURE;
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.API_SETTINGS_COMMAND), chromeAPIModeStatusString);
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.API_SETTINGS_COMMAND));
+			logger.error(exception.getMessage(), exception);
+		}
+		// Quick client access
+		try {
+			param = Collections.singletonList(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getParam());
+			String rawQuickClientAccessStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.QUICK_CLIENT_ACCESS_GET.getCommand(), param, false);
+			String quickClientAccessStatusInt = rawResponseHandling(rawQuickClientAccessStatus);
+			String quickClientAccessStatus = VIAConnectProConstant.ONE.equals(quickClientAccessStatusInt) ? VIAConnectProConstant.ENABLED : VIAConnectProConstant.DISABLED;
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.QUICK_CLIENT_ACCESS), quickClientAccessStatus);
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.QUICK_CLIENT_ACCESS));
+			logger.error(exception.getMessage(), exception);
+		}
 		// Volume
-		String rawVolume = sendTelnetCommand(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false);
-		String[] splitVolume = rawVolume.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-		String volume = splitVolume[2];
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), volume);
-		controls.add(createSlider(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), "0%", "100%", 0f, 100f, Float.valueOf(volume)));
+		try {
+			String rawVolume = sendTelnetCommand(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false);
+			String[] splitVolume = rawVolume.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+			String volume = splitVolume[2];
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), volume);
+			controls.add(createSlider(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), "0%", "100%", 0f, 100f, Float.valueOf(volume)));
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME));
+			logger.error(exception.getMessage(), exception);
+		}
 		// Wifi guest mode
-		String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getParam()), false);
-		String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
-		if (wifiGuestMode.equals(VIAConnectProConstant.ERROR_20057)) {
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), VIAConnectProConstant.NONE);
-			logger.error(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_20057.getErrorCode(), VIAConnectProErrorMetric.ERROR_20057.getErrorDescription()));
-		} else {
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), wifiGuestMode);
-			controls.add(createSwitch(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), Integer.parseInt(wifiGuestMode),
-					VIAConnectProConstant.DISABLE,
-					VIAConnectProConstant.ENABLE));
+		try {
+			String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getParam()), false);
+			String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
+			if (wifiGuestMode.equals(VIAConnectProConstant.ERROR_20057)) {
+				throw new ResourceNotReachableException(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_20057.getErrorCode(), VIAConnectProErrorMetric.ERROR_20057.getErrorDescription()));
+			} else {
+				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), wifiGuestMode);
+				controls.add(createSwitch(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), Integer.parseInt(wifiGuestMode),
+						VIAConnectProConstant.DISABLE,
+						VIAConnectProConstant.ENABLE));
+			}
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE));
+			logger.error(exception.getMessage(), exception);
 		}
 	}
 
@@ -483,47 +558,64 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * Populate statistics and controls for DeviceSettings-Moderator group
 	 *
 	 * @param statistics Map of statistics
+	 * @param noneValueStatistics List of properties that contain exception
 	 */
-	private void populateDeviceSettingsModeratorGroup(Map<String, String> statistics) {
+	private void populateDeviceSettingsModeratorGroup(Map<String, String> statistics, List<String> noneValueStatistics) {
 		if (!isConfigManagement()) {
 			return;
 		}
-		// Moderator-Status
 		String groupName = VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getGroupName();
+		// Moderator-Status
 		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.MODERATOR_MODE_STATUS_GET.getParam());
-		String rawPresentationModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.MODERATOR_MODE_STATUS_GET.getCommand(), param, false);
-		String presentationModeStatus = rawResponseHandling(rawPresentationModeStatus);
-		String presentationModeStatusString = VIAConnectProConstant.ZERO.equals(presentationModeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.MODERATOR_MODE_STATUS), presentationModeStatusString);
-		// Moderator-ParticipantPresentConfirm
-		param = Collections.singletonList(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getParam());
-		String rawPartPresentConfirm = sendTelnetCommand(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getCommand(), param, false);
-		String partPresentConfirm = rawResponseHandling(rawPartPresentConfirm);
-		String partPresentConfirmString = VIAConnectProConstant.ZERO.equals(partPresentConfirm) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
-		if (partPresentConfirm.equals(VIAConnectProConstant.ERROR_1008)) {
-			return;
+		try {
+			String rawPresentationModeStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.MODERATOR_MODE_STATUS_GET.getCommand(), param, false);
+			String presentationModeStatus = rawResponseHandling(rawPresentationModeStatus);
+			String presentationModeStatusString = VIAConnectProConstant.ZERO.equals(presentationModeStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.MODERATOR_MODE_STATUS), presentationModeStatusString);
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.MODERATOR_MODE_STATUS));
+			logger.error(exception.getMessage(), exception);
 		}
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.PARTICIPANT_PRESENTATION_START_CONFIRM), partPresentConfirmString);
+		// Moderator-ParticipantPresentConfirm
+		try {
+			param = Collections.singletonList(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getParam());
+			String rawPartPresentConfirm = sendTelnetCommand(VIAConnectProMonitoringMetric.PART_PRESENT_CONFIRM_GET.getCommand(), param, false);
+			String partPresentConfirm = rawResponseHandling(rawPartPresentConfirm);
+			String partPresentConfirmString = VIAConnectProConstant.ZERO.equals(partPresentConfirm) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
+			if (partPresentConfirm.equals(VIAConnectProConstant.ERROR_1008)) {
+				return;
+			}
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.PARTICIPANT_PRESENTATION_START_CONFIRM), partPresentConfirmString);
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.PARTICIPANT_PRESENTATION_START_CONFIRM));
+			logger.error(exception.getMessage(), exception);
+		}
 	}
 
 	/**
 	 * Populate statistics and controls for DeviceSettings-RoomOverlay
 	 *
 	 * @param statistics Map of statistics
+	 * @param noneValueStatistics List of properties that contain exception
 	 */
-	private void populateDeviceSettingsRoomOverlayGroup(Map<String, String> statistics) {
+	private void populateDeviceSettingsRoomOverlayGroup(Map<String, String> statistics, List<String> noneValueStatistics) {
 		if (!isConfigManagement()) {
 			return;
 		}
 		String groupName = VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getGroupName();
-		List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getParam());
-		String rawRoomOverlayStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getCommand(), param, false);
-		String[] roomOverlayResponse = rawRoomOverlayStatus.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-		String roomOverlayStatus = roomOverlayResponse[2];
-		String roomOverlayStatusString = VIAConnectProConstant.ZERO.equals(roomOverlayStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
-		statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.ROOM_OVERLAY_ACTIVE_STATUS), roomOverlayStatusString);
-		if (VIAConnectProConstant.ONE.equals(roomOverlayStatus)) {
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUTO_HIDE_TIME), roomOverlayResponse[3]);
+		try {
+			List<String> param = Collections.singletonList(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getParam());
+			String rawRoomOverlayStatus = sendTelnetCommand(VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getCommand(), param, false);
+			String[] roomOverlayResponse = rawRoomOverlayStatus.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
+			String roomOverlayStatus = roomOverlayResponse[2];
+			String roomOverlayStatusString = VIAConnectProConstant.ZERO.equals(roomOverlayStatus) ? VIAConnectProConstant.DISABLED : VIAConnectProConstant.ENABLED;
+			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.ROOM_OVERLAY_ACTIVE_STATUS), roomOverlayStatusString);
+			if (VIAConnectProConstant.ONE.equals(roomOverlayStatus)) {
+				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.AUTO_HIDE_TIME), roomOverlayResponse[3]);
+			}
+		} catch (Exception exception) {
+			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.ROOM_OVERLAY_ACTIVE_STATUS));
+			logger.error(exception.getMessage(), exception);
 		}
 	}
 
@@ -1332,7 +1424,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		if(!isChannelConnected()){
 			createChannel();
 		}
-		String response = this.internalSend(buildTelnetRequest(VIAConnectProMonitoringMetric.VOLUME.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.VOLUME.getParam()), false));
+		String response = this.internalSend(buildTelnetRequest(VIAConnectProMonitoringMetric.ROOM_CODE.getCommand(),Arrays.asList(VIAConnectProMonitoringMetric.ROOM_CODE.getParam().split(VIAConnectProConstant.COMMA)), false));
 		boolean isLoginSuccess = response.endsWith(VIAConnectProConstant.END_COMMAND);
 
 		if(!isLoginSuccess){

@@ -157,23 +157,6 @@ class VIAConnectProCommunicatorTest {
 
     /**
      * Test control:
-     * - Test set volume
-     * @throws Exception When fail to control or get statistics
-     */
-    @Test
-    @Tag("RealDevice")
-    void testSetVolume() throws Exception {
-        viaConnectProCommunicator.getMultipleStatistics();
-        ControllableProperty controllableProperty = new ControllableProperty();
-        controllableProperty.setProperty(String.format("%s#%s",VIAConnectProConstant.DEVICE_SETTINGS, VIAConnectProConstant.VOLUME));
-        controllableProperty.setValue("20");
-        viaConnectProCommunicator.controlProperty(controllableProperty);
-        ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
-        Assertions.assertEquals("20", extendedStatistics.getStatistics().get(String.format("%s#%s", VIAConnectProConstant.DEVICE_SETTINGS, VIAConnectProConstant.VOLUME)));
-    }
-
-    /**
-     * Test control:
      * - Test set new stream url
      * @throws Exception When fail to control or get statistics
      */
