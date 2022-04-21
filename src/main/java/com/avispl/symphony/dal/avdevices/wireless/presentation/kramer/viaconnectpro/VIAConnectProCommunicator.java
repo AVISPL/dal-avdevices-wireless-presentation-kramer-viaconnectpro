@@ -21,6 +21,7 @@ import com.avispl.symphony.dal.avdevices.wireless.presentation.kramer.viaconnect
 import com.avispl.symphony.dal.communicator.TelnetCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -97,6 +98,12 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	private final ReentrantLock reentrantLock = new ReentrantLock();
 
 	/**
+	 * Set of command that response IOException before.
+	 * This is to make sure getMultipleStatistics don't take a lot of time to retrieve statistics for command that had IOException earlier.
+	 */
+	private final Set<String> ioExceptionCommands = new LinkedHashSet<>();
+
+	/**
 	 * Prevent case where {@link VIAConnectProCommunicator#controlProperty(ControllableProperty)} slow down -
 	 * the getMultipleStatistics interval if it's fail to send the cmd
 	 */
@@ -171,6 +178,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	protected void internalDestroy() {
 		cachedLocalExtendedStatistics.getStatistics().clear();
 		cachedLocalExtendedStatistics.getControllableProperties().clear();
+		ioExceptionCommands.clear();
 		this.destroyChannel();
 		super.internalDestroy();
 	}
@@ -810,8 +818,17 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @return String of raw response
 	 */
 	private String sendTelnetCommand(String command, List<String> params, boolean isControlCommand) {
+		String fullTelnetRequest = buildTelnetRequest(command, params, false);
+		int initialTimeout = this.getTimeout();
+		for (String ioExceptionCommand : ioExceptionCommands) {
+			if (ioExceptionCommand.equals(fullTelnetRequest)) {
+				// Set time out to commands that already response IOException earlier.
+				this.timeout = controlTelnetTimeout;
+				break;
+			}
+		}
 		try {
-			String response = this.internalSend(buildTelnetRequest(command, params, false));
+			String response = this.internalSend(fullTelnetRequest);
 			String inputCommand = command;
 			// Handle special cases
 			if (inputCommand.equals(VIAConnectProControllingMetric.STREAMING_START.getCommand()) && isControlCommand) {
@@ -851,11 +868,20 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			} else {
 				response = strings[0];
 			}
+			// Set back to initial timeout value to make sure it not conflicts anything.
+			this.timeout = initialTimeout;
+			// Remove command from ioExceptionCommands set if it receives response.
+			ioExceptionCommands.removeIf(ioExceptionCommand -> ioExceptionCommand.equals(fullTelnetRequest));
 			return response;
 		} catch (Exception exception) {
+			// Set back to initial timeout value to make sure it not conflicts anything.
+			this.timeout = initialTimeout;
 			if (isControlCommand) {
 				throw new CommandFailureException(this.getAddress(), command, "Fail to send control command", exception);
 			} else {
+				if (exception instanceof IOException) {
+					ioExceptionCommands.add(fullTelnetRequest);
+				}
 				throw new ResourceNotReachableException("Fail to monitor properties", exception);
 			}
 		}
