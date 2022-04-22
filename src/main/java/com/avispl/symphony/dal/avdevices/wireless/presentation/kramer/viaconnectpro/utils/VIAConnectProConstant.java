@@ -46,7 +46,7 @@ public class VIAConnectProConstant {
 	public static final String USER_DISPLAY_STATUS = "UserDisplayStatus";
 	public static final String HOST_NAME = "HostName";
 	public static final String DNS_SERVER = "DnsServer";
-	public static final String GATEWAY = "Gateway";
+	public static final String DEFAULT_GATEWAY = "DefaultGateway";
 	public static final String SUBNET_MASK = "SubnetMask";
 	public static final String IP_ADDRESS = "IpAddress";
 	public static final String COLON = ":";
@@ -100,4 +100,6 @@ public class VIAConnectProConstant {
 	public static final String TRUE = "true";
 	public static final String KICK_OFF = "KickOff";
 	public static final String ROOM_OVERLAY_ACTIVE_STATUS = "RoomOverlayActiveStatus";
+	public static final String NON_SECURE = "Non-Secure";
+	public static final String SECURE = "Secure";
 }
