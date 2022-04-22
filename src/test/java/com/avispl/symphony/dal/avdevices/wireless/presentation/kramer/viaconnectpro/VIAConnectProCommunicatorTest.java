@@ -63,7 +63,7 @@ class VIAConnectProCommunicatorTest {
         Map<String, String> stats = extendedStatistics.getStatistics();
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.IP_ADDRESS));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.SUBNET_MASK));
-        Assertions.assertNotNull(stats.get(VIAConnectProConstant.GATEWAY));
+        Assertions.assertNotNull(stats.get(VIAConnectProConstant.DEFAULT_GATEWAY));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.DNS_SERVER));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.HOST_NAME));
         Assertions.assertNotNull(stats.get(VIAConnectProConstant.ROOM_CODE));
@@ -153,23 +153,6 @@ class VIAConnectProCommunicatorTest {
         Map<String, String> stats = extendedStatistics.getStatistics();
         String groupName = VIAConnectProMonitoringMetric.ROOM_OVERLAY_STATUS_GET.getGroupName();
         Assertions.assertNotNull(stats.get(String.format("%s#%s", groupName, VIAConnectProConstant.ROOM_OVERLAY_ACTIVE_STATUS)));
-    }
-
-    /**
-     * Test control:
-     * - Test set volume
-     * @throws Exception When fail to control or get statistics
-     */
-    @Test
-    @Tag("RealDevice")
-    void testSetVolume() throws Exception {
-        viaConnectProCommunicator.getMultipleStatistics();
-        ControllableProperty controllableProperty = new ControllableProperty();
-        controllableProperty.setProperty(String.format("%s#%s",VIAConnectProConstant.DEVICE_SETTINGS, VIAConnectProConstant.VOLUME));
-        controllableProperty.setValue("20");
-        viaConnectProCommunicator.controlProperty(controllableProperty);
-        ExtendedStatistics extendedStatistics = (ExtendedStatistics) viaConnectProCommunicator.getMultipleStatistics().get(0);
-        Assertions.assertEquals("20", extendedStatistics.getStatistics().get(String.format("%s#%s", VIAConnectProConstant.DEVICE_SETTINGS, VIAConnectProConstant.VOLUME)));
     }
 
     /**
