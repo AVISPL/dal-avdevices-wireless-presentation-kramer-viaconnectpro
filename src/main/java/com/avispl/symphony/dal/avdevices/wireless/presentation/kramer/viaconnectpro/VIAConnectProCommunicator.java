@@ -52,7 +52,6 @@ import org.springframework.util.CollectionUtils;
  * Controlling:
  * <ol>
  * 	<li>Set Volume</li>
- * 	<li>Kick off user</li>
  * 	<li>Start/Stop UserPresentation</li>
  * 	<li>Streaming(start/stop/restart/change)</li>
  * 	<li>StreamingURL: open network stream</li>
@@ -693,11 +692,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_PRESENTATION), DisplayStatusModeEnum.START.getName(), "Starting presentation..."));
 			}
 		}
-		// Kick user:
-		if (isConfigManagement()) {
-			statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.USER_KICK_OFF), VIAConnectProConstant.EMPTY);
-			controls.add(createButton(String.format("%s#%s", groupName, VIAConnectProConstant.USER_KICK_OFF), VIAConnectProConstant.KICK_OFF, "Kicking user ..."));
-		}
 	}
 
 	/**
@@ -1099,7 +1093,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				previousUserName = propertyValue;
 				break;
 			case VIAConnectProConstant.USER_PRESENTATION:
-			case VIAConnectProConstant.USER_KICK_OFF:
 				normalControlProperties(VIAConnectProControllingMetric.DISPLAY_STATUS_SET, propertyName, propertyValue);
 				break;
 			default:
@@ -1299,19 +1292,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 						if (VIAConnectProConstant.USR_NOT_EXIST.equals(applyDisplayStatus)) {
 							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.DISPLAY_STATUS_SET.getCommand(),
 									String.format("User %s is not exist/online at the moment.", userName));
-						}
-						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
-						break;
-					case VIAConnectProConstant.USER_KICK_OFF:
-						String kickUserName = localStats.get(String.format("%s#%s", groupName, VIAConnectProConstant.USER));
-						displayStatusParams = new ArrayList<>();
-						displayStatusParams.add(kickUserName);
-						String rawKickOffUser = sendTelnetCommand(VIAConnectProControllingMetric.KICK_OFF.getCommand(), displayStatusParams, true);
-						String[] splitRawKickOffUser = rawKickOffUser.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-						// Example response: KickOff|0/1|<username>. 0 is fail, 1 is success
-						if (!VIAConnectProConstant.ONE.equals(splitRawKickOffUser[1])) {
-							throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.KICK_OFF.getCommand(),
-									String.format("Fail to kick user: %s", kickUserName));
 						}
 						removeCachedStatisticAndControl(cachedStats, cachedControls, groupName);
 						break;

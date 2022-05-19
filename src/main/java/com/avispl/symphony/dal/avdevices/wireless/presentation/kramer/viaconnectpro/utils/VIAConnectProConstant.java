@@ -16,7 +16,6 @@ public class VIAConnectProConstant {
 	public static final String USER = "User";
 	public static final String APPLY = "Apply";
 	public static final String USER_PRESENTATION = "UserPresentation";
-	public static final String USER_KICK_OFF = "UserKickOff";
 	public static final String ACTION = "Action";
 	public static final String START = "Start";
 	public static final String STOP = "Stop";
@@ -98,7 +97,6 @@ public class VIAConnectProConstant {
 	public static final String MODERATOR_MODE_STATUS = "ModeratorModeStatus";
 	public static final String PARTICIPANT_PRESENTATION_START_CONFIRM = "ParticipantPresentationStartConfirm";
 	public static final String TRUE = "true";
-	public static final String KICK_OFF = "KickOff";
 	public static final String ROOM_OVERLAY_ACTIVE_STATUS = "RoomOverlayActiveStatus";
 	public static final String NON_SECURE = "Non-Secure";
 	public static final String SECURE = "Secure";
