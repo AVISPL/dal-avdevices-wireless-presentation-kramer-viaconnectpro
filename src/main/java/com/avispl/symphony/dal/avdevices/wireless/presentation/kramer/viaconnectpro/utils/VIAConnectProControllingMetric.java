@@ -24,12 +24,6 @@ public enum VIAConnectProControllingMetric {
 	DISPLAY_STATUS_SET("UserModeration", "DisplayStatus", "Set"),
 
 	/**
-	 * Kick off user:
-	 * Set status: require 1 param username
-	 */
-	KICK_OFF("ParticipantList", "KickOff", ""),
-
-	/**
 	 * Volume: Set-require 2 params (Vol and Set)
 	 */
 	VOLUME_SET("DeviceSettings", "Vol", "Set"),
