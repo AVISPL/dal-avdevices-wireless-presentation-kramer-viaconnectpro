@@ -366,8 +366,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 		Map<String, String> userNameAndStatusMap = new HashMap<>();
 		for (String usernameAndStatus : usernamesAndStatus) {
 			if (usernameAndStatus.contains(VIAConnectProConstant.UNDER_SCORE)) {
-				String username = usernameAndStatus.split(VIAConnectProConstant.UNDER_SCORE)[0];
-				String status = usernameAndStatus.split(VIAConnectProConstant.UNDER_SCORE)[1];
+				String username = usernameAndStatus.substring(0, usernameAndStatus.lastIndexOf(VIAConnectProConstant.UNDER_SCORE));
+				String status = usernameAndStatus.substring(usernameAndStatus.lastIndexOf(VIAConnectProConstant.UNDER_SCORE) + 1);
 				userNameAndStatusMap.put(username, status);
 			}
 		}
@@ -847,7 +847,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				//  so we request one more time to make sure we get the correct response. If it's failed again => It's an error.
 				response = this.internalSend(buildTelnetRequest(command, params, false));
 				if (!response.contains(inputCommand)) {
-					throw new ResourceNotReachableException("Fail to monitor properties");
+					throw new ResourceNotReachableException("Fail to monitor properties for command " + command);
 				}
 			}
 			String[] strings = response.split(VIAConnectProConstant.END_COMMAND);
@@ -876,7 +876,7 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				if (exception instanceof IOException) {
 					ioExceptionCommands.add(fullTelnetRequest);
 				}
-				throw new ResourceNotReachableException("Fail to monitor properties", exception);
+				throw new ResourceNotReachableException("Fail to monitor properties for command " + command, exception);
 			}
 		}
 	}
