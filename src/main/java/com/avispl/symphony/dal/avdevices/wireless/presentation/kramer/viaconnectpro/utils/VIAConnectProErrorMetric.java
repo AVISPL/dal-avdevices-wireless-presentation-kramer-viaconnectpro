@@ -21,11 +21,6 @@ public enum VIAConnectProErrorMetric {
 	ERROR_704("Error704", "System audio device name list is empty."),
 
 	/**
-	 * Wifi guest mode error response:
-	 */
-	ERROR_20057("Error20057","Guest mode is not activated"),
-
-	/**
 	 * Streaming error responses:
 	 */
 	ERROR_20055("Error20055","Blank or Wrong URLs"),

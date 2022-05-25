@@ -55,7 +55,6 @@ import org.springframework.util.CollectionUtils;
  * 	<li>Start/Stop UserPresentation</li>
  * 	<li>Streaming(start/stop/restart/change)</li>
  * 	<li>StreamingURL: open network stream</li>
- * 	<li>Wifi Guest Mode</li>.
  * 	</ol>
  *
  * @author Kevin / Symphony Dev Team<br>
@@ -541,22 +540,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 			controls.add(createSlider(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME), "0%", "100%", 0f, 100f, Float.valueOf(volume)));
 		} catch (Exception exception) {
 			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.VOLUME));
-			logger.error(exception.getMessage(), exception);
-		}
-		// Wifi guest mode
-		try {
-			String rawWifiGuestMode = sendTelnetCommand(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getCommand(), Collections.singletonList(VIAConnectProMonitoringMetric.WIFI_GUEST_MODE.getParam()), false);
-			String wifiGuestMode = rawResponseHandling(rawWifiGuestMode);
-			if (wifiGuestMode.equals(VIAConnectProConstant.ERROR_20057)) {
-				throw new ResourceNotReachableException(String.format("Populate failed - Response error code: %s, error description: %s", VIAConnectProErrorMetric.ERROR_20057.getErrorCode(), VIAConnectProErrorMetric.ERROR_20057.getErrorDescription()));
-			} else {
-				statistics.put(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), wifiGuestMode);
-				controls.add(createSwitch(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE), Integer.parseInt(wifiGuestMode),
-						VIAConnectProConstant.DISABLE,
-						VIAConnectProConstant.ENABLE));
-			}
-		} catch (Exception exception) {
-			noneValueStatistics.add(String.format("%s#%s", groupName, VIAConnectProConstant.WIFI_GUEST_MODE));
 			logger.error(exception.getMessage(), exception);
 		}
 	}
@@ -1107,15 +1090,10 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	 * @param propertyName Name of the property
 	 */
 	private void deviceSettingsControl(String propertyValue, String propertyName) {
-		switch (propertyName) {
-			case VIAConnectProConstant.VOLUME:
-				normalControlProperties(VIAConnectProControllingMetric.VOLUME_SET, propertyName, propertyValue);
-				break;
-			case VIAConnectProConstant.WIFI_GUEST_MODE:
-				normalControlProperties(VIAConnectProControllingMetric.WIFI_GUEST_MODE_SET, propertyName, propertyValue);
-				break;
-			default:
-				throw new IllegalArgumentException("Unexpected value: " + propertyName);
+		if (VIAConnectProConstant.VOLUME.equals(propertyName)) {
+			normalControlProperties(VIAConnectProControllingMetric.VOLUME_SET, propertyName, propertyValue);
+		} else {
+			throw new IllegalArgumentException("Unexpected value: " + propertyName);
 		}
 	}
 
@@ -1250,18 +1228,6 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 				if (!volumeResponse.equals(stringVolume)) {
 					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.VOLUME_SET.getCommand(),
 							String.format("Fail to set volume to %s", propertyValue));
-				}
-				break;
-			case WIFI_GUEST_MODE_SET:
-				List<String> wifiGuestModeParams = new ArrayList<>();
-				wifiGuestModeParams.add(propertyValue);
-				String rawWifiGuestModeSet = sendTelnetCommand(VIAConnectProControllingMetric.WIFI_GUEST_MODE_SET.getCommand(), wifiGuestModeParams, true);
-				String[] rawWifiGuestModeSetResponse = rawWifiGuestModeSet.split(VIAConnectProConstant.REGEX_VERTICAL_LINE);
-				// Expect response is WifiGuestMode|0/1 Stop/Start|0/1. 1 is set successfully, 0 is fail to set.
-				String wifiGuestModeSetResponse = rawWifiGuestModeSetResponse[rawWifiGuestModeSetResponse.length - 1];
-				if (!VIAConnectProConstant.ONE.equals(wifiGuestModeSetResponse)) {
-					throw new CommandFailureException(this.getAddress(), VIAConnectProControllingMetric.WIFI_GUEST_MODE_SET.getCommand(),
-							String.format("Fail to set wifi guest mode status to %s", propertyValue));
 				}
 				break;
 			case DISPLAY_STATUS_SET:
