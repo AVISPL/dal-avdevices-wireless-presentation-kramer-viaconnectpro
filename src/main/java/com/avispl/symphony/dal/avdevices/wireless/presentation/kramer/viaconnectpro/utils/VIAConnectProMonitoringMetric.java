@@ -97,13 +97,6 @@ public enum VIAConnectProMonitoringMetric {
 	STREAMING_STATUS_GET("StreamingFromDeviceToExternal", "Streaming", "Get"),
 	STREAMING_STATUS_SSTATUS_GET("StreamingFromDeviceToExternal", "Streaming", "SStatus"),
 
-	/**
-	 * Wi-Fi Guest Mode
-	 * <li>Get-Status: 1 param (Status)/li>
-	 * <li>Set-WifiGuestMode-Status: 1 param Status<</li>
-	 */
-	WIFI_GUEST_MODE("DeviceSettings", "WifiGuestMode", "Status"),
-
 	ROOM_CODE("","RCode","Get,Code");
 
 	/**

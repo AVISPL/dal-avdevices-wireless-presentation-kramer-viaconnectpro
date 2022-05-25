@@ -85,12 +85,8 @@ public class VIAConnectProConstant {
 	public static final String STREAMING_IS_ON = "Streaming is ON";
 	public static final String NO_URL = "No URL";
 	public static final String ERROR_504 = "Error504";
-	public static final String ERROR_20057 = "Error20057";
 	public static final String NONE = "None";
-	public static final String WIFI_GUEST_MODE = "WifiGuestMode";
 	public static final String ERROR = "Error";
-	public static final String DISABLE = "Disable";
-	public static final String ENABLE = "Enable";
 	public static final String USER_MODERATION = "UserModeration";
 	public static final String WAITING = "Waiting";
 	public static final String HTTPS = "https://";

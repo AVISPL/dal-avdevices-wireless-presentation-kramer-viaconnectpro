@@ -50,12 +50,7 @@ public enum VIAConnectProControllingMetric {
 	/**
 	 * Streaming URL: require 2 params 1,  URL path
 	 */
-	STREAMING_URL("StreamingFromExternalToDevice", "StreamingURL", "1"),
-
-	/**
-	 * Set-WifiGuestMode-Start/Stop: 0/1
-	 */
-	WIFI_GUEST_MODE_SET("DeviceSettings", "WifiGuestMode", "");
+	STREAMING_URL("StreamingFromExternalToDevice", "StreamingURL", "1");
 
 	/**
 	 * VIAConnectProControllingMetric with arguments constructor
