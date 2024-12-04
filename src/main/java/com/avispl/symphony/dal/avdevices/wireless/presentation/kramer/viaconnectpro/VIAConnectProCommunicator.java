@@ -159,14 +159,8 @@ public class VIAConnectProCommunicator extends TelnetCommunicator implements Mon
 	protected void internalInit() throws Exception {
 		super.internalInit();
 		if (logger.isDebugEnabled()) {
-			logger.debug("VIAConnectProCommunicator-internalInit(): Creating telnet session");
+			logger.debug("VIAConnectProCommunicator internalInit() is called");
 		}
-		// Check if device is reachable, then close the telnet session
-		this.createChannel();
-		if (logger.isDebugEnabled()) {
-			logger.debug("VIAConnectProCommunicator-internalInit(): Closing telnet session");
-		}
-		this.destroyChannel();
 	}
 
 	/**
